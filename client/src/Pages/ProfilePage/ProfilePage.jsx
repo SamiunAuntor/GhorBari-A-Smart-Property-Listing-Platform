@@ -41,9 +41,17 @@ const ProfilePage = () => {
 
     useEffect(() => {
         if (user) {
+            const rawPhone = user.phone || '';
+            let localPhone = '';
+            if (rawPhone.startsWith('+88')) {
+                localPhone = rawPhone.slice(3);
+            } else {
+                localPhone = rawPhone;
+            }
+
             setFormData({
                 name: user.name || '',
-                phone: user.phone || '',
+                phone: localPhone,
                 profileImage: user.profileImage || ''
             });
         }
@@ -54,6 +62,9 @@ const ProfilePage = () => {
         mutationFn: async (newData) => {
             const token = await authUser.getIdToken();
 
+            const phoneDigits = (newData.phone || "").trim();
+            const fullPhone = phoneDigits ? `+88${phoneDigits}` : "";
+
             // 1. Update Firebase Auth Profile
             await updateUserProfile({
                 displayName: newData.name,
@@ -61,7 +72,11 @@ const ProfilePage = () => {
             });
 
             // 2. Update Backend Database
-            return axios.patch('/update-profile', newData, {
+            return axios.patch('/update-profile', {
+                name: newData.name,
+                phone: fullPhone,
+                profileImage: newData.profileImage
+            }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         },
@@ -87,6 +102,11 @@ const ProfilePage = () => {
             confirmButtonText: "Yes, Update it!"
         }).then((result) => {
             if (result.isConfirmed) {
+                const phone = (formData.phone || "").trim();
+                if (phone && !/^\d{11}$/.test(phone)) {
+                    showToast("Phone number must be exactly 11 digits", "error");
+                    return;
+                }
                 updateProfile.mutate(formData);
             }
         });
@@ -293,11 +313,21 @@ const ProfilePage = () => {
                         <div>
                             <label className="text-[10px] font-black uppercase text-gray-400 mb-1 block">Phone Contact</label>
                             {isEditing ? (
-                                <input
-                                    className="w-full px-5 py-3 rounded-xl bg-gray-50 border-2 border-orange-100 focus:border-orange-500 outline-none font-bold transition-all"
-                                    value={formData.phone}
-                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                />
+                                <div className="flex items-center gap-2">
+                                    <div className="px-4 py-3 rounded-xl bg-gray-100 border-2 border-orange-100 text-gray-700 text-sm font-bold select-none">
+                                        +88
+                                    </div>
+                                    <input
+                                        className="flex-1 px-5 py-3 rounded-xl bg-gray-50 border-2 border-orange-100 focus:border-orange-500 outline-none font-bold transition-all"
+                                        value={formData.phone}
+                                        maxLength={11}
+                                        onChange={(e) => {
+                                            const digits = e.target.value.replace(/\D/g, "").slice(0, 11);
+                                            setFormData(prev => ({ ...prev, phone: digits }));
+                                        }}
+                                        placeholder="01XXXXXXXXX"
+                                    />
+                                </div>
                             ) : (
                                 <p className="text-lg font-black text-gray-800 flex items-center gap-2">
                                     <Phone size={18} className="text-gray-400" /> {user.phone || "No phone added"}

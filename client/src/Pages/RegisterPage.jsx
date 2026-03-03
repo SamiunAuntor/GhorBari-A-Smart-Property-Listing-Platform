@@ -187,7 +187,9 @@ const RegisterPage = () => {
 
                         {/* PHONE NUMBER */}
                         <div className="space-y-1">
-                            <label className="text-sm font-semibold text-gray-700 ml-1">Phone Number</label>
+                            <label className="text-sm font-semibold text-gray-700 ml-1">
+                                Phone Number <span className="text-orange-500">*</span>
+                            </label>
                             <div className="flex items-center bg-white border border-gray-200 rounded-md focus-within:border-orange-500 transition-all">
                                 <span className="px-4 py-2.5 text-gray-700 font-medium select-none">+88</span>
                                 <input
@@ -195,13 +197,10 @@ const RegisterPage = () => {
                                     placeholder="01XXXXXXXXX"
                                     maxLength="11"
                                     {...register("phone", {
+                                        required: "Phone number is required",
                                         pattern: {
                                             value: /^\d{11}$/,
                                             message: "Phone number must be exactly 11 digits"
-                                        },
-                                        validate: (value) => {
-                                            if (!value) return true; // Optional field
-                                            return value.length === 11 || "Phone number must be exactly 11 digits";
                                         }
                                     })}
                                     onInput={(e) => {
