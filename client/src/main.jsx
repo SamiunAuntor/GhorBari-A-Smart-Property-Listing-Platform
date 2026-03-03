@@ -5,6 +5,7 @@ import { Toaster } from "react-hot-toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AuthProvider from "./Firebase/AuthProvider";
 import { ComparisonProvider } from "./context/ComparisonContext";
+import { WishlistProvider } from "./context/WishlistContext";
 import router from "./Router";
 import "./index.css";
 import "leaflet/dist/leaflet.css";
@@ -18,10 +19,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ComparisonProvider>
-          <div className="max-w-[1440px]">
-            <RouterProvider router={router} />
-          </div>
-          <Toaster position="top-right" />
+          <WishlistProvider>
+            <div className="max-w-[1440px]">
+              <RouterProvider router={router} />
+            </div>
+            <Toaster position="top-right" />
+          </WishlistProvider>
         </ComparisonProvider>
       </AuthProvider>
     </QueryClientProvider>

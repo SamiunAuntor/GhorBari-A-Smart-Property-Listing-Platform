@@ -1,5 +1,4 @@
 import axios from "axios";
-import { useNavigate } from "react-router";
 import { getAuth, signOut } from "firebase/auth";
 import { useEffect } from "react";
 
@@ -8,7 +7,6 @@ const axiosSecure = axios.create({
 });
 
 const useAxiosSecure = () => {
-    const navigate = useNavigate();
     const auth = getAuth();
 
     useEffect(() => {
@@ -32,8 +30,13 @@ const useAxiosSecure = () => {
                 const status = error.response ? error.response.status : null;
                 if (status === 401 || status === 403) {
                     // Force logout on unauthorized access
-                    await signOut(auth);
-                    navigate("/login");
+                    try {
+                        await signOut(auth);
+                    } catch (e) {
+                        console.error('Error signing out', e);
+                    }
+                    // Use a safe full-page redirect so this hook doesn't require Router context
+                    window.location.href = '/login';
                 }
                 return Promise.reject(error);
             }
@@ -44,7 +47,7 @@ const useAxiosSecure = () => {
             axiosSecure.interceptors.request.eject(requestInterceptor);
             axiosSecure.interceptors.response.eject(responseInterceptor);
         };
-    }, [auth, navigate]);
+    }, [auth]);
 
     return axiosSecure;
 };

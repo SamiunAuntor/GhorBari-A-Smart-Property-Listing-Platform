@@ -1,6 +1,7 @@
 import React from "react";
 import { Bed, Bath, Square, MapPin, Star, Heart, CheckCircle, Tag, Layers, XCircle, Scale } from "lucide-react";
 import useComparison from "../../Hooks/useComparison";
+import useWishlist from "../../Hooks/useWishlist";
 
 const PropertyCard = ({ property }) => {
     const comparison = useComparison();
@@ -45,6 +46,19 @@ const PropertyCard = ({ property }) => {
     const ownerName = owner?.name || owner?.email || "Unknown";
     const isSelected = comparison.isPropertySelected(property._id);
 
+    // wishlist state
+    const { isInWishlist, toggle } = useWishlist();
+    const wishlisted = isInWishlist(property._id);
+    const handleWishlistClick = async (e) => {
+        e.stopPropagation();
+        if (wishlisted) {
+            await toggle(property._id);
+        } else {
+            const note = prompt('Add a note for this property (optional)');
+            await toggle(property._id, note || '');
+        }
+    };
+
     return (
         <div className={`max-w-sm rounded-lg overflow-hidden shadow-lg bg-white group cursor-pointer transition-all duration-300 hover:shadow-2xl border ${isSelected ? 'border-blue-500 border-2' : 'border-gray-100'} mx-auto w-full flex flex-col h-[420px]`}>
             <div className="relative h-64 overflow-hidden">
@@ -70,8 +84,12 @@ const PropertyCard = ({ property }) => {
                     </span>
                 </div>
 
-                <button className="absolute top-4 right-4 p-2 bg-white/80 backdrop-blur-sm rounded-md text-gray-600 hover:text-red-500 hover:bg-white transition-colors shadow-md z-20">
-                    <Heart size={20} />
+                <button
+                    onClick={handleWishlistClick}
+                    className="absolute top-4 right-4 p-2 bg-white/80 backdrop-blur-sm rounded-md text-gray-600 hover:text-red-500 hover:bg-white transition-colors shadow-md z-20"
+                    title={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                >
+                    <Heart size={20} fill={wishlisted ? 'currentColor' : 'none'} />
                 </button>
 
                 {/* Compare Button Overlay */}

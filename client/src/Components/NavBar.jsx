@@ -120,6 +120,20 @@ const Navbar = () => {
                             Compare
                         </NavLink>
                     )}
+                    {user && (
+                        <NavLink
+                            to="/wishlist"
+                            className={({ isActive }) =>
+                                `px-4 py-2 rounded-md text-sm md:text-base font-medium transition-all duration-200
+                  ${isActive
+                                    ? "bg-orange-500 text-white"
+                                    : "text-gray-700 hover:bg-orange-400/20 hover:text-orange-600"
+                                }`
+                            }
+                        >
+                            Wishlist
+                        </NavLink>
+                    )}
 
                     {/* Only show My Profile if logged in */}
                     {user && (
@@ -285,8 +299,21 @@ const Navbar = () => {
                                 >
                                     Compare
                                 </NavLink>
+                            )}                            {user && (
+                                <NavLink
+                                    to="/wishlist"
+                                    onClick={() => setMenuOpen(false)}
+                                    className={({ isActive }) =>
+                                        `px-4 py-2 rounded-md text-sm font-medium transition-all duration-200
+                    ${isActive
+                                            ? "bg-orange-500 text-white"
+                                            : "text-gray-700 hover:bg-orange-400/20 hover:text-orange-600"
+                                        }`
+                                    }
+                                >
+                                    Wishlist
+                                </NavLink>
                             )}
-
                             {!user ? (
                                 <div className="flex gap-2 pt-3 flex-col">
                                     <Link

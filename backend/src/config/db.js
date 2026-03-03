@@ -1,6 +1,7 @@
 import { MongoClient } from "mongodb";
 
 import dotenv from "dotenv";
+import { WishlistModel } from "../models/Wishlist.js";
 
 dotenv.config();
 
@@ -17,6 +18,14 @@ export async function connectDatabase() {
         db = client.db("GhorBari");
 
         console.log("✅ MongoDB connected");
+
+        // ensure wishlist indexes
+        try {
+            await WishlistModel.ensureIndexes(db);
+            console.log("✅ Wishlist indexes ensured");
+        } catch (err) {
+            console.error("❌ Failed to ensure wishlist indexes", err);
+        }
 
         return db;
 

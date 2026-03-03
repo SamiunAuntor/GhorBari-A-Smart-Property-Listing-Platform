@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import useAxios from '../../Hooks/useAxios';
 import useAuth from '../../Hooks/useAuth';
 import useComparison from '../../Hooks/useComparison';
+import useWishlist from '../../Hooks/useWishlist';
 import PropertyDetailsMap from './PropertyDetailsMap';
 import NearbyPlaces from './NearbyPlaces';
 import ApplicationModal from './ApplicationModal';
@@ -11,7 +12,7 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination, Autoplay } from 'swiper/modules';
 import {
     MapPin, Bed, Bath, Square, CheckCircle, XCircle,
-    User, MessageSquare, ShieldCheck, Sparkles, Loader2, Layers, Star, Tag, Send, Scale, Check
+    User, MessageSquare, ShieldCheck, Sparkles, Loader2, Layers, Star, Tag, Send, Scale, Check, Heart
 } from 'lucide-react';
 
 import useAxiosSecure from '../../Hooks/useAxiosSecure';
@@ -27,6 +28,7 @@ const PropertyDetails = ({ isAdminPreview = false }) => {
     const axiosSecure = useAxiosSecure();
     const { user } = useAuth();
     const comparison = useComparison();
+    const wishlist = useWishlist();
 
     const [geoMaps, setGeoMaps] = useState({ divisionMap: new Map(), districtMap: new Map(), upazilaMap: new Map() });
     const [selectedPlace, setSelectedPlace] = useState(null);
@@ -393,7 +395,24 @@ out center;
                             </span>
                         </div>
 
-                        <h1 className="text-4xl font-black text-gray-900 mb-4 leading-tight">{title}</h1>
+                        <div className="flex items-center mb-4">
+                            <h1 className="text-4xl font-black text-gray-900 leading-tight mr-3">{title}</h1>
+                            <button
+                                onClick={async () => {
+                                    if (!property?._id) return;
+                                    if (wishlist.isInWishlist(property._id)) {
+                                        await wishlist.toggle(property._id);
+                                    } else {
+                                        const note = prompt('Add a note for this property (optional)');
+                                        await wishlist.toggle(property._id, note || '');
+                                    }
+                                }}
+                                className="p-2 bg-white rounded-md shadow hover:bg-gray-100 transition text-gray-600"
+                                title={wishlist.isInWishlist(property?._id) ? 'Remove from wishlist' : 'Add to wishlist'}
+                            >
+                                <Heart size={24} fill={wishlist.isInWishlist(property?._id) ? 'currentColor' : 'none'} />
+                            </button>
+                        </div>
 
                         <div className="flex items-center gap-2 text-gray-500 mb-8">
                             <MapPin size={18} className="text-orange-500 shrink-0" />
