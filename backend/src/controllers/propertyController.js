@@ -48,7 +48,7 @@ export const postProperty = async (req, res) => {
             },
 
             isOwnerVerified: req.user.isVerified,
-            status: "pending", // pending → active (approved) → hidden (owner hides) → deal-in-progress → sold/rented
+            status: "active", // pending → active (approved) → hidden (owner hides) → deal-in-progress → sold/rented
             active_proposal_id: null, // No active proposal initially
             createdAt: new Date()
         };
