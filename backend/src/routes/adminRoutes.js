@@ -18,6 +18,10 @@ router.get("/admin/pending-verifications", verifyToken, adminController.getPendi
 
 router.patch("/admin/verify-user/:id", verifyToken, adminController.verifyUser);
 
+// Verify user using NID registry (dummy NID server)
+
+router.patch("/admin/verify-user-nid/:id", verifyToken, adminController.verifyUserByNidFromRegistry);
+
 // Get all pending property listings
 
 router.get("/admin/pending-properties", verifyToken, adminController.getPendingProperties);

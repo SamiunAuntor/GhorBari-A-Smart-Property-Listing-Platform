@@ -107,19 +107,33 @@ const ProfilePage = () => {
         }
     };
 
-    const handleNIDUpload = async (e) => {
+    const handleNIDSubmit = async (e) => {
         e.preventDefault();
-        const front = e.target.nidFront.files[0];
-        const back = e.target.nidBack.files[0];
-        if (!front || !back) return showToast("Both NID sides required", "error");
+
+        const nidNumber = e.target.nidNumber?.value?.trim();
+        const front = e.target.nidFront?.files?.[0] || null;
+        const back = e.target.nidBack?.files?.[0] || null;
+
+        if (!nidNumber) {
+            return showToast("NID number is required", "error");
+        }
 
         setUploading(true);
         try {
-            const frontUrl = await uploadImageToImgBB(front);
-            const backUrl = await uploadImageToImgBB(back);
+            const nidImages = [];
+
+            if (front) {
+                const frontUrl = await uploadImageToImgBB(front);
+                if (frontUrl) nidImages.push(frontUrl);
+            }
+
+            if (back) {
+                const backUrl = await uploadImageToImgBB(back);
+                if (backUrl) nidImages.push(backUrl);
+            }
 
             const token = await authUser.getIdToken();
-            await axios.post('/submit-nid', { nidImages: [frontUrl, backUrl] }, {
+            await axios.post('/submit-nid', { nidNumber, nidImages }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -127,7 +141,7 @@ const ProfilePage = () => {
             setIsVerifying(false);
             showToast("NID submitted for review", "success");
         } catch (err) {
-            showToast("NID upload failed", "error");
+            showToast(err?.response?.data?.message || "NID submission failed", "error");
         } finally {
             setUploading(false);
         }
@@ -335,7 +349,14 @@ const ProfilePage = () => {
                     <div className="mt-auto">
                         {!user?.nidVerified && !user?.nidSubmittedAt ? (
                             <button
-                                onClick={() => setIsVerifying(true)}
+                                onClick={() => {
+                                    if (!user?.phone || !String(user.phone).trim()) {
+                                        showToast("Please add your phone number in your profile before applying for verification", "error");
+                                        setIsEditing(true);
+                                        return;
+                                    }
+                                    setIsVerifying(true);
+                                }}
                                 className="w-full py-4 bg-orange-50 text-orange-600 rounded-2xl font-black uppercase text-[10px] tracking-widest border-2 border-dashed border-orange-200 hover:bg-orange-100 transition-all"
                             >
                                 Apply for Verification
@@ -358,7 +379,7 @@ const ProfilePage = () => {
             {/* Verification Form Section */}
             {isVerifying && (
                 <div className="mt-10 animate-in slide-in-from-bottom-5 duration-500">
-                    <form onSubmit={handleNIDUpload} className="bg-[#1A1A2E] p-10 rounded-[3rem] shadow-2xl relative overflow-hidden">
+                    <form onSubmit={handleNIDSubmit} className="bg-[#1A1A2E] p-10 rounded-[3rem] shadow-2xl relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-8">
                             <UploadCloud size={100} className="text-white/5" />
                         </div>
@@ -366,16 +387,28 @@ const ProfilePage = () => {
                         <h3 className="text-2xl font-black text-white mb-2 flex items-center gap-3">
                             Identity Verification
                         </h3>
-                        <p className="text-gray-400 mb-10 text-sm font-medium">Please provide high-resolution images of your National ID card for verification.</p>
+                        <p className="text-gray-400 mb-10 text-sm font-medium">
+                            Enter your National ID number. Uploading NID images is optional but recommended for manual review.
+                        </p>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-                            <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">NID Front Side</label>
-                                <input name="nidFront" type="file" required className="block w-full text-xs text-gray-400 file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:bg-orange-600 file:text-white bg-white/5 border border-white/10 p-4 rounded-2xl focus:outline-none" />
+                            <div className="space-y-4 md:col-span-2">
+                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">NID Number</label>
+                                <input
+                                    name="nidNumber"
+                                    type="text"
+                                    required
+                                    className="w-full px-5 py-3 rounded-2xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                    placeholder="Enter your NID number"
+                                />
                             </div>
                             <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">NID Back Side</label>
-                                <input name="nidBack" type="file" required className="block w-full text-xs text-gray-400 file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:bg-orange-600 file:text-white bg-white/5 border border-white/10 p-4 rounded-2xl focus:outline-none" />
+                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">NID Front Side (optional)</label>
+                                <input name="nidFront" type="file" className="block w-full text-xs text-gray-400 file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:bg-orange-600 file:text-white bg-white/5 border border-white/10 p-4 rounded-2xl focus:outline-none" />
+                            </div>
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">NID Back Side (optional)</label>
+                                <input name="nidBack" type="file" className="block w-full text-xs text-gray-400 file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:bg-orange-600 file:text-white bg-white/5 border border-white/10 p-4 rounded-2xl focus:outline-none" />
                             </div>
                         </div>
 

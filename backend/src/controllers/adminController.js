@@ -1,6 +1,7 @@
 import { getDatabase } from "../config/db.js";
 
 import { ObjectId } from "mongodb";
+import { findByNidNumber } from "../services/nidRegistryService.js";
 
 export const getPendingVerifications = async (req, res) => {
 
@@ -9,7 +10,10 @@ export const getPendingVerifications = async (req, res) => {
         const db = getDatabase();
 
         const users = await db.collection("users")
-            .find({ nidImages: { $exists: true, $ne: [] }, nidVerified: false })
+            .find({
+                nidNumber: { $exists: true, $ne: null },
+                nidVerified: false
+            })
             .sort({ nidSubmittedAt: -1 })
             .toArray();
 
@@ -318,6 +322,60 @@ export const getAdminPropertyById = async (req, res) => {
         if (!result) return res.status(404).send({ message: "Property not found" });
 
         res.send(result);
+
+    } catch (error) {
+
+        res.status(500).send({ message: "Server error" });
+
+    }
+
+};
+
+export const verifyUserByNidFromRegistry = async (req, res) => {
+
+    try {
+
+        const db = getDatabase();
+
+        const id = req.params.id;
+
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).send({ message: "Invalid user id" });
+        }
+
+        const user = await db.collection("users").findOne({ _id: new ObjectId(id) });
+
+        if (!user) {
+            return res.status(404).send({ message: "User not found" });
+        }
+
+        if (!user.nidNumber || typeof user.nidNumber !== "string" || !user.nidNumber.trim()) {
+            return res.status(400).send({ message: "User has not submitted a valid NID number" });
+        }
+
+        const registryRecord = await findByNidNumber(user.nidNumber);
+
+        if (!registryRecord) {
+            return res.status(200).send({
+                matched: false,
+                nidVerified: user.nidVerified || false
+            });
+        }
+
+        await db.collection("users").updateOne(
+            { _id: new ObjectId(id) },
+            {
+                $set: {
+                    nidVerified: true,
+                    nidVerifiedAt: new Date()
+                }
+            }
+        );
+
+        res.send({
+            matched: true,
+            nidVerified: true
+        });
 
     } catch (error) {
 

@@ -27,16 +27,31 @@ const PendingUserVerifications = () => {
         }
     });
 
-    const handleToggleVerify = (user, newStatus) => {
+    const verifyByRegistryMutation = useMutation({
+        mutationFn: async ({ id }) => {
+            return await axiosSecure.patch(`/admin/verify-user-nid/${id}`);
+        },
+        onSuccess: (res) => {
+            queryClient.invalidateQueries(['pending-users']);
+            const matched = res?.data?.matched;
+            if (matched) {
+                Swal.fire('Verified!', 'User has been verified using NID registry.', 'success');
+            } else {
+                Swal.fire('No Match', 'NID number not found in registry. User remains unverified.', 'info');
+            }
+        }
+    });
+
+    const handleMarkUnverified = (user) => {
         Swal.fire({
-            title: `Make this user ${newStatus ? 'Verified' : 'Unverified'}?`,
+            title: 'Mark this user Unverified?',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#344767',
             confirmButtonText: 'Yes, update it!'
         }).then((result) => {
             if (result.isConfirmed) {
-                verifyMutation.mutate({ id: user._id, status: newStatus });
+                verifyMutation.mutate({ id: user._id, status: false });
             }
         });
     };
@@ -82,6 +97,7 @@ const PendingUserVerifications = () => {
                                 <th className="px-4 py-4 border-r border-gray-200">Contact Number</th>
                                 <th className="px-4 py-4 border-r border-gray-200">Role</th>
                                 <th className="px-4 py-4 border-r border-gray-200">Application Time</th>
+                                <th className="px-4 py-4 border-r border-gray-200">NID Number</th>
                                 <th className="px-4 py-4 border-r border-gray-200">NID Documents</th>
                                 <th className="px-4 py-4">Verification Status</th>
                             </tr>
@@ -126,28 +142,42 @@ const PendingUserVerifications = () => {
                                         <span className="text-[10px] text-gray-400 font-bold uppercase">{new Date(user.nidSubmittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                     </div>
                                 </td>
+                                <td className="px-4 py-5 text-sm font-medium text-[#67748e] border-r border-gray-200">
+                                    {user.nidNumber || 'N/A'}
+                                </td>
                                 <td className="px-4 py-5 border-r border-gray-200">
-                                    <button
-                                        onClick={() => showNidInfo(user.nidImages)}
-                                        className="mx-auto w-fit px-4 py-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all flex items-center gap-2 border border-blue-100 shadow-sm"
-                                    >
-                                        <Eye size={16} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">View NID</span>
-                                    </button>
+                                    {user.nidImages && user.nidImages.length > 0 ? (
+                                        <button
+                                            onClick={() => showNidInfo(user.nidImages)}
+                                            className="mx-auto w-fit px-4 py-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all flex items-center gap-2 border border-blue-100 shadow-sm"
+                                        >
+                                            <Eye size={16} />
+                                            <span className="text-[10px] font-black uppercase tracking-widest">View NID</span>
+                                        </button>
+                                    ) : (
+                                        <span className="text-gray-400 text-xs font-medium">No Images</span>
+                                    )}
                                 </td>
                                 <td className="px-4 py-5">
-                                    <div className="flex items-center justify-center">
-                                        <select
-                                            className={`text-[11px] font-black uppercase border-2 rounded-xl px-2 py-1.5 outline-none cursor-pointer transition-all ${user.nidVerified
-                                                    ? 'border-emerald-100 text-emerald-600 bg-emerald-50'
-                                                    : 'border-amber-100 text-amber-600 bg-amber-50'
-                                                }`}
-                                            value={user.nidVerified ? "verified" : "unverified"}
-                                            onChange={(e) => handleToggleVerify(user, e.target.value === "verified")}
-                                        >
-                                            <option value="unverified">Unverified</option>
-                                            <option value="verified">Verified</option>
-                                        </select>
+                                    <div className="flex items-center justify-center gap-2">
+                                        {!user.nidVerified && (
+                                            <button
+                                                onClick={() => verifyByRegistryMutation.mutate({ id: user._id })}
+                                                className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all flex items-center gap-2 text-[11px] font-black uppercase tracking-widest border border-emerald-100"
+                                            >
+                                                <UserCheck size={14} />
+                                                Verify User
+                                            </button>
+                                        )}
+                                        {user.nidVerified && (
+                                            <button
+                                                onClick={() => handleMarkUnverified(user)}
+                                                className="px-4 py-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 transition-all flex items-center gap-2 text-[11px] font-black uppercase tracking-widest border border-amber-100"
+                                            >
+                                                <UserCheck size={14} />
+                                                Mark Unverified
+                                            </button>
+                                        )}
                                     </div>
                                 </td>
                             </tr>

@@ -158,15 +158,36 @@ export const submitNid = async (req, res) => {
 
         const db = getDatabase();
 
-        const { nidImages } = req.body; // Expecting array of 2 URLs
+        const { nidNumber, nidImages = [] } = req.body;
 
         const email = req.user.email;
 
+        if (!nidNumber || typeof nidNumber !== "string" || !nidNumber.trim()) {
+            return res.status(400).send({ message: "NID number is required" });
+        }
+
+        // Ensure user has a phone number before allowing verification request
+        const existingUser = await db.collection("users").findOne({ email });
+        const hasPhone =
+            existingUser?.phone !== undefined &&
+            existingUser.phone !== null &&
+            String(existingUser.phone).trim() !== "";
+
+        if (!hasPhone) {
+            return res.status(400).send({
+                message: "Please add a phone number to your profile before applying for verification",
+            });
+        }
+
+        const cleanedImages = Array.isArray(nidImages) ? nidImages.filter(Boolean) : [];
+
         const updatedDoc = {
             $set: {
-                nidImages,
+                nidNumber: nidNumber.trim(),
+                nidImages: cleanedImages,
                 nidSubmittedAt: new Date(),
-                nidVerified: false // Admin will manually verify later
+                nidVerified: false,
+                nidVerifiedAt: null
             }
         };
 
