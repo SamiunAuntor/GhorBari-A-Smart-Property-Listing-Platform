@@ -73,7 +73,7 @@ const Navbar = () => {
                             }`
                         }
                     >
-                        Buy / Rent
+                        Marketplace
                     </NavLink>
 
                     <NavLink
@@ -252,7 +252,7 @@ const Navbar = () => {
                                     }`
                                 }
                             >
-                                Buy / Rent
+                                Marketplace
                             </NavLink>
 
                             <NavLink

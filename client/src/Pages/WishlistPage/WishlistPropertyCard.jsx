@@ -1,10 +1,20 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Bed, Bath, Square, MapPin, Star, Heart, CheckCircle, Tag, Layers, XCircle, Scale, FileText } from "lucide-react";
 import useComparison from "../../Hooks/useComparison";
 import useWishlist from "../../Hooks/useWishlist";
 
-const NoteViewModal = ({ isOpen, title, note, onClose }) => {
+const NoteViewModal = ({ isOpen, title, note, onClose, onSave }) => {
+    const [draftNote, setDraftNote] = useState("");
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            setDraftNote(note || "");
+            setSaving(false);
+        }
+    }, [isOpen, note]);
+
     if (!isOpen) return null;
 
     return (
@@ -22,13 +32,31 @@ const NoteViewModal = ({ isOpen, title, note, onClose }) => {
                 <h3 className="text-sm font-bold text-gray-900">Wishlist Note</h3>
                 <p className="mt-1 text-xs text-gray-500 line-clamp-1">{title || "Property"}</p>
 
-                <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                        {note?.trim() ? note : "No note added for this property."}
-                    </p>
-                </div>
+                <textarea
+                    value={draftNote}
+                    onChange={(e) => setDraftNote(e.target.value)}
+                    placeholder="Add your note..."
+                    className="mt-4 w-full rounded-lg border border-gray-200 p-3 text-sm text-gray-700 leading-relaxed outline-none transition-all focus:border-orange-500 focus:ring-2 focus:ring-orange-100 resize-none"
+                    rows={5}
+                />
 
-                <div className="mt-4 flex justify-end">
+                <div className="mt-4 flex justify-end gap-2">
+                    <button
+                        type="button"
+                        onClick={async () => {
+                            setSaving(true);
+                            try {
+                                await onSave(draftNote);
+                                onClose();
+                            } finally {
+                                setSaving(false);
+                            }
+                        }}
+                        className="rounded-md bg-orange-500 px-3 py-2 text-xs font-semibold text-white hover:bg-orange-600 disabled:opacity-60"
+                        disabled={saving}
+                    >
+                        {saving ? "Saving..." : "Save"}
+                    </button>
                     <button
                         type="button"
                         onClick={onClose}
@@ -45,7 +73,7 @@ const NoteViewModal = ({ isOpen, title, note, onClose }) => {
 const WishlistPropertyCard = ({ property }) => {
     const navigate = useNavigate();
     const comparison = useComparison();
-    const { isInWishlist, toggle } = useWishlist();
+    const { isInWishlist, toggle, updateNote } = useWishlist();
     const [showNoteModal, setShowNoteModal] = useState(false);
 
     const {
@@ -222,6 +250,9 @@ const WishlistPropertyCard = ({ property }) => {
                 title={title}
                 note={wishlistNote}
                 onClose={() => setShowNoteModal(false)}
+                onSave={async (newNote) => {
+                    await updateNote(property._id, newNote);
+                }}
             />
         </>
     );
