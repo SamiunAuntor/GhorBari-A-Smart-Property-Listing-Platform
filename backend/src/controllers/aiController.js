@@ -3,7 +3,8 @@ import axios from "axios";
 const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
 
 // Hugging Face model for real estate AI
-const HUGGINGFACE_MODEL = "mistralai/Mistral-7B-Instruct-v0.1";
+// Using meta-llama/Llama-2-7b-chat-hf (works on free tier)
+const HUGGINGFACE_MODEL = "meta-llama/Llama-2-7b-chat-hf";
 const HUGGINGFACE_API_URL = `https://router.huggingface.co/v1/chat/completions`;
 
 export const sendMessageToAI = async (req, res) => {
