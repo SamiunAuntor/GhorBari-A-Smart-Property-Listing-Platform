@@ -395,10 +395,6 @@ out center;
                             >
                                 {ownerProfile?.nidVerified === "verified" ? <><CheckCircle size={14} /> Verified</> : <><XCircle size={14} /> Unverified</>}
                             </span>
-                        </div>
-
-                        <div className="flex items-center mb-4">
-                            <h1 className="text-4xl font-black text-gray-900 leading-tight mr-3">{title}</h1>
                             <button
                                 onClick={async () => {
                                     if (!property?._id) return;
@@ -408,11 +404,20 @@ out center;
                                         setIsWishlistModalOpen(true);
                                     }
                                 }}
-                                className={`p-2 bg-white rounded-md shadow hover:bg-gray-100 transition ${wishlist.isInWishlist(property?._id) ? 'text-red-500' : 'text-gray-600 hover:text-red-500'}`}
+                                className={`text-sm font-bold px-3.5 py-1.5 rounded-full flex items-center gap-1.5 border transition ${
+                                    wishlist.isInWishlist(property?._id)
+                                        ? 'bg-red-50 text-red-600 border-red-200'
+                                        : 'bg-white text-gray-600 border-gray-200 hover:text-red-500 hover:border-red-200'
+                                }`}
                                 title={wishlist.isInWishlist(property?._id) ? 'Remove from wishlist' : 'Add to wishlist'}
                             >
-                                <Heart size={24} fill={wishlist.isInWishlist(property?._id) ? 'currentColor' : 'none'} />
+                                <Heart size={14} fill={wishlist.isInWishlist(property?._id) ? 'currentColor' : 'none'} />
+                                Wishlist
                             </button>
+                        </div>
+
+                        <div className="mb-4">
+                            <h1 className="text-4xl font-black text-gray-900 leading-tight">{title}</h1>
                         </div>
 
                         <div className="flex items-center gap-2 text-gray-500 mb-8">

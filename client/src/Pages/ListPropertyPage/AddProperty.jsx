@@ -15,7 +15,7 @@ const AMENITIES = [
     "Air Conditioning", "Parking Space", "24/7 Security", "Elevator",
     "Backup Generator", "Gas Connection", "Water Supply", "Balcony",
     "CCTV", "Fire Safety", "Playground", "Gym",
-    "Electricity Connection", "Internet/WiFi"
+    "Electricity Connection", "Internet/WiFi", "Fully Furnished"
 ];
 
 const DIVISION_COORDS = {
@@ -185,6 +185,7 @@ const AddProperty = () => {
                 </div>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <fieldset disabled={isSubmitting} className="contents">
                     {/* LEFT COLUMN */}
                     <div className="lg:col-span-7 space-y-8">
                         <div className="bg-white rounded-lg p-8 shadow-sm border border-gray-100">
@@ -229,7 +230,7 @@ const AddProperty = () => {
                                 </div>
                                 <div>
                                     <label className={labelStyle}>District</label>
-                                    <select {...register("district_id", { required: "Required" })} className={inputStyle("district_id")} disabled={!watchDiv}>
+                                    <select {...register("district_id", { required: "Required" })} className={inputStyle("district_id")} disabled={isSubmitting || !watchDiv}>
                                         <option value="">Select</option>
                                         {districts.filter(d => String(d.division_id) === String(watchDiv)).map(d => (
                                             <option key={d.id} value={d.id}>{d.name}</option>
@@ -239,7 +240,7 @@ const AddProperty = () => {
                                 </div>
                                 <div>
                                     <label className={labelStyle}>Upazila/Thana</label>
-                                    <select {...register("upazila_id", { required: "Required" })} className={inputStyle("upazila_id")} disabled={!watchDist}>
+                                    <select {...register("upazila_id", { required: "Required" })} className={inputStyle("upazila_id")} disabled={isSubmitting || !watchDist}>
                                         <option value="">Select</option>
                                         {upazilas.filter(u => String(u.district_id) === String(watchDist)).map(u => (
                                             <option key={u.id} value={u.id}>{u.name}</option>
@@ -257,7 +258,7 @@ const AddProperty = () => {
                                 <ErrorMsg name="address" />
                             </div>
                             <div className={`rounded-lg overflow-hidden border ${!watchCoords && errors.submitCount > 0 ? 'border-red-300' : 'border-gray-100'} h-[400px] shadow-inner relative`}>
-                                <MapPicker setValue={setValue} flyTo={mapView} />
+                                <MapPicker setValue={setValue} flyTo={mapView} disabled={isSubmitting} />
                             </div>
                         </div>
                     </div>
@@ -271,7 +272,7 @@ const AddProperty = () => {
                                     <label className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-2 block">
                                         {listingType === "rent" ? "Monthly Rent" : "Asking Price"} (BDT)
                                     </label>
-                                    <input type="number" {...register("price", { required: "Price is required", min: { value: 1, message: "Must be positive" } })} className="w-full bg-transparent border-none text-3xl font-black text-gray-900 outline-none placeholder:text-orange-200" placeholder="000,000" />
+                                    <input type="number" min="0" {...register("price", { required: "Price is required", min: { value: 0, message: "Cannot be negative" } })} className="w-full bg-transparent border-none text-3xl font-black text-gray-900 outline-none placeholder:text-orange-200" placeholder="000,000" />
                                     <ErrorMsg name="price" />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
@@ -279,12 +280,12 @@ const AddProperty = () => {
                                         <>
                                             <div>
                                                 <label className={labelStyle}>Rooms</label>
-                                                <input type="number" {...register("roomCount", { required: "Required", min: 1 })} className={inputStyle("roomCount")} placeholder="Count" />
+                                                <input type="number" min="1" {...register("roomCount", { required: "Required", min: 1 })} className={inputStyle("roomCount")} placeholder="Count" />
                                                 <ErrorMsg name="roomCount" />
                                             </div>
                                             <div>
                                                 <label className={labelStyle}>Baths</label>
-                                                <input type="number" {...register("bathrooms", { required: "Required", min: 1 })} className={inputStyle("bathrooms")} placeholder="Count" />
+                                                <input type="number" min="1" {...register("bathrooms", { required: "Required", min: 1 })} className={inputStyle("bathrooms")} placeholder="Count" />
                                                 <ErrorMsg name="bathrooms" />
                                             </div>
                                         </>
@@ -292,12 +293,12 @@ const AddProperty = () => {
                                         <>
                                             <div>
                                                 <label className={labelStyle}>Floors</label>
-                                                <input type="number" {...register("floorCount", { required: "Required", min: 1 })} className={inputStyle("floorCount")} placeholder="Count" />
+                                                <input type="number" min="1" {...register("floorCount", { required: "Required", min: 1 })} className={inputStyle("floorCount")} placeholder="Count" />
                                                 <ErrorMsg name="floorCount" />
                                             </div>
                                             <div>
                                                 <label className={labelStyle}>Total Units</label>
-                                                <input type="number" {...register("totalUnits", { required: "Required", min: 1 })} className={inputStyle("totalUnits")} placeholder="Count" />
+                                                <input type="number" min="1" {...register("totalUnits", { required: "Required", min: 1 })} className={inputStyle("totalUnits")} placeholder="Count" />
                                                 <ErrorMsg name="totalUnits" />
                                             </div>
                                         </>
@@ -307,7 +308,7 @@ const AddProperty = () => {
                                 </div>
                                 <div>
                                     <label className={labelStyle}>Area (Sq Ft)</label>
-                                    <input type="number" {...register("areaSqFt", { required: "Area is required", min: 1 })} className={inputStyle("areaSqFt")} placeholder="e.g. 1500" />
+                                    <input type="number" min="0" {...register("areaSqFt", { required: "Area is required", min: { value: 0, message: "Cannot be negative" } })} className={inputStyle("areaSqFt")} placeholder="e.g. 1500" />
                                     <ErrorMsg name="areaSqFt" />
                                 </div>
                             </div>
@@ -318,7 +319,7 @@ const AddProperty = () => {
                             <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-100 rounded-md cursor-pointer hover:bg-orange-50 transition-colors group">
                                 <Upload className="text-gray-300 group-hover:text-orange-400 transition-colors mb-2" size={32} />
                                 <span className="text-xs font-bold text-gray-400 group-hover:text-orange-500 uppercase tracking-tighter">Click to upload images</span>
-                                <input type="file" multiple accept="image/*" className="hidden" onChange={handleFilesChange} />
+                                <input type="file" multiple accept="image/*" className="hidden" onChange={handleFilesChange} disabled={isSubmitting} />
                             </label>
                             {selectedFiles.length === 0 && <span className="block text-[10px] font-bold text-gray-400 mt-2 text-center uppercase">At least 1 image is required</span>}
 
@@ -328,7 +329,7 @@ const AddProperty = () => {
                                         {selectedFiles.map((file, idx) => (
                                             <div key={idx} className="relative flex-shrink-0">
                                                 <img src={URL.createObjectURL(file)} alt="preview" className="w-16 h-16 object-cover rounded-md border border-gray-100" />
-                                                <button type="button" onClick={() => removeFile(idx)} className="absolute -top-1 -right-1 bg-white shadow text-red-500 rounded-full p-1 border border-gray-100">
+                                                <button type="button" onClick={() => removeFile(idx)} className="absolute -top-1 -right-1 bg-white shadow text-red-500 rounded-full p-1 border border-gray-100" disabled={isSubmitting}>
                                                     <X size={10} />
                                                 </button>
                                             </div>
@@ -380,6 +381,7 @@ const AddProperty = () => {
                             )}
                         </button>
                     </div>
+                    </fieldset>
                 </form>
             </div>
         </section>
