@@ -198,6 +198,14 @@ const ProfilePage = () => {
     const isVerified = verificationState === 'verified';
     const isPending = verificationState === 'pending';
     const isRejected = verificationState === 'rejected';
+    const statusBadgeClass = isVerified
+        ? 'bg-emerald-500 text-white'
+        : isPending
+            ? 'bg-yellow-500 text-white'
+            : isRejected
+                ? 'bg-rose-500 text-white'
+                : 'bg-slate-500 text-white';
+    const statusBadgeText = isVerified ? 'Verified' : isPending ? 'Pending' : isRejected ? 'Rejected' : 'Unverified';
 
     return (
         <div className="w-[92%] mx-auto my-10 font-sans">
@@ -230,15 +238,9 @@ const ProfilePage = () => {
 
                         {/* Status Badge */}
                         <div className="absolute -bottom-2 -right-2">
-                            {isVerified ? (
-                                <span className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-500 text-white text-[10px] font-black uppercase rounded-full border-2 border-[#1A1A2E] shadow-lg">
-                                    <ShieldCheck size={12} /> Verified
-                                </span>
-                            ) : (
-                                <span className="flex items-center gap-1.5 px-4 py-1.5 bg-rose-500 text-white text-[10px] font-black uppercase rounded-full border-2 border-[#1A1A2E] shadow-lg">
-                                    <ShieldAlert size={12} /> {isPending ? 'Pending' : isRejected ? 'Rejected' : 'Unverified'}
-                                </span>
-                            )}
+                            <span className={`flex items-center gap-1.5 px-4 py-1.5 text-[10px] font-black uppercase rounded-full border-2 border-[#1A1A2E] shadow-lg ${statusBadgeClass}`}>
+                                {isVerified ? <ShieldCheck size={12} /> : <ShieldAlert size={12} />} {statusBadgeText}
+                            </span>
                         </div>
                     </div>
 
@@ -251,6 +253,9 @@ const ProfilePage = () => {
                             </span>
                             <span className="flex items-center justify-center md:justify-start gap-2 text-gray-400 font-medium">
                                 <Phone size={16} className="text-orange-400" /> {user.phone || "No phone added"}
+                            </span>
+                            <span className="flex items-center justify-center md:justify-start gap-2 text-gray-400 font-medium">
+                                <Star size={16} className="text-orange-400 fill-orange-400" /> Platform rating {user?.rating?.average || 'N/A'}
                             </span>
                         </div>
                     </div>
@@ -402,7 +407,7 @@ const ProfilePage = () => {
                         ) : isPending ? (
                             <div className="p-4 bg-blue-50 text-blue-700 rounded-2xl border border-blue-100 text-center">
                                 <p className="font-black text-[10px] uppercase tracking-widest">Review in Progress</p>
-                                <p className="text-[10px] font-bold opacity-80 mt-1">Manual review usually takes 24-48h</p>
+                                <p className="text-[10px] font-bold opacity-80 mt-1">Verification usually takes a few hours</p>
                             </div>
                         ) : isRejected ? (
                             <div className="p-4 bg-rose-50 text-rose-700 rounded-2xl border border-rose-100 text-center">
