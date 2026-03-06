@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
-import { X, User, MessageSquare, CheckCircle, XCircle, Clock, Loader2, Send, Ban, Star } from 'lucide-react';
+import { X, User, MessageSquare, CheckCircle, XCircle, Clock, Loader2, Send, Ban, Star, History } from 'lucide-react';
 import Swal from 'sweetalert2';
 import useAxios from '../../Hooks/useAxios';
 import useAuth from '../../Hooks/useAuth';
@@ -9,6 +9,7 @@ import { showToast } from '../../Utilities/ToastMessage';
 import { getApplicationStatusDisplay, getApplicationStatusColor, isActiveApplicationStatus } from '../../Utilities/StatusDisplay';
 import OwnerCounterOfferModal from './OwnerCounterOfferModal';
 import RateUserModal from './RateUserModal';
+import BiddingHistoryModal from './BiddingHistoryModal';
 
 const ApplicationManagementModal = ({ isOpen, onClose, property }) => {
     // ALL HOOKS MUST BE CALLED FIRST - before any conditional returns
@@ -21,6 +22,8 @@ const ApplicationManagementModal = ({ isOpen, onClose, property }) => {
     const [selectedApplicationForCounter, setSelectedApplicationForCounter] = useState(null);
     const [rateModalOpen, setRateModalOpen] = useState(false);
     const [selectedApplicationForRating, setSelectedApplicationForRating] = useState(null);
+    const [biddingHistoryModalOpen, setBiddingHistoryModalOpen] = useState(false);
+    const [selectedApplicationForHistory, setSelectedApplicationForHistory] = useState(null);
 
     // Fetch applications for this property
     const { data: applications = [], isLoading, error } = useQuery({
@@ -209,6 +212,14 @@ const ApplicationManagementModal = ({ isOpen, onClose, property }) => {
         setSelectedApplicationForCounter(null);
     };
 
+    const handleOpenHistory = (application) => {
+        setSelectedApplicationForHistory({
+            ...application,
+            property
+        });
+        setBiddingHistoryModalOpen(true);
+    };
+
     // Now handle conditional rendering AFTER all hooks are called
     if (!isOpen) return null;
     
@@ -319,49 +330,34 @@ const ApplicationManagementModal = ({ isOpen, onClose, property }) => {
                                                             </div>
                                                         </div>
 
-                                                        {application.proposedPrice && (
-                                                            <div className="mb-2">
-                                                                <span className="text-sm font-bold text-gray-700">
-                                                                    Proposed : ৳{application.proposedPrice.toLocaleString()}
-                                                                </span>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Message Thread */}
-                                                        {Array.isArray(application.messages) && application.messages.length > 0 ? (
-                                                            <div className="mb-3 space-y-1.5">
-                                                                {application.messages.map((msg) => (
-                                                                    <div key={msg._id} className="flex items-start gap-2">
-                                                                        <MessageSquare size={14} className="text-gray-300 mt-0.5" />
-                                                                        <div className="flex-1">
-                                                                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                                                <span className="font-semibold text-gray-600">{msg.sender === 'owner' ? 'You (Owner)' : msg.sender === 'seeker' ? application.seeker.name : msg.sender}</span>
-                                                                                <span>•</span>
-                                                                                <span>{new Date(msg.timestamp).toLocaleString()}</span>
-                                                                                {msg.linkedPrice && (
-                                                                                    <>
-                                                                                        <span>•</span>
-                                                                                        <span>৳{msg.linkedPrice.toLocaleString()}</span>
-                                                                                    </>
-                                                                                )}
-                                                                            </div>
-                                                                            <p className="text-sm text-gray-700">{msg.text}</p>
+                                                        {(application.proposedPrice || application.message) && (
+                                                            <div className="mb-3 rounded-md border border-gray-200 bg-white px-4 py-3">
+                                                                {application.proposedPrice && (
+                                                                    <div className="mb-3">
+                                                                        <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600">
+                                                                            Proposed
                                                                         </div>
+                                                                        <p className="text-base font-black text-gray-900">
+                                                                            {"\u09F3"}{application.proposedPrice.toLocaleString()}
+                                                                        </p>
                                                                     </div>
-                                                                ))}
-                                                            </div>
-                                                        ) : (
-                                                            application.message && (
-                                                                <div className="flex items-start gap-2 mb-3">
-                                                                    <MessageSquare size={16} className="text-gray-400 mt-0.5" />
-                                                                    <p className="text-sm text-gray-600">{application.message}</p>
-                                                                </div>
-                                                            )
-                                                        )}
+                                                                )}
 
-                                                        <p className="text-xs text-gray-500">
-                                                            Applied : {new Date(application.createdAt).toLocaleString()}
-                                                        </p>
+                                                                {application.message && (
+                                                                    <div className={application.proposedPrice ? "border-t border-gray-100 pt-3" : ""}>
+                                                                        <div className="mb-1 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-gray-500">
+                                                                            <MessageSquare size={14} className="text-gray-400" />
+                                                                            Message
+                                                                        </div>
+                                                                        <p className="text-sm leading-6 text-gray-600">{application.message}</p>
+                                                                    </div>
+                                                                )}
+
+                                                                <p className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-500">
+                                                                    Applied : {new Date(application.createdAt).toLocaleString()}
+                                                                </p>
+                                                            </div>
+                                                        )}
                                                     </div>
 
                                                     <div className="flex flex-col gap-2">
@@ -378,6 +374,13 @@ const ApplicationManagementModal = ({ isOpen, onClose, property }) => {
                                                                         <CheckCircle size={14} />
                                                                     )}
                                                                     Accept
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleOpenHistory(application)}
+                                                                    className="px-4 py-2 bg-purple-600 text-white rounded-md font-bold text-xs uppercase tracking-wider hover:bg-purple-700 transition-all flex items-center gap-2"
+                                                                >
+                                                                    <History size={14} />
+                                                                    History
                                                                 </button>
                                                                 <button
                                                                     onClick={() => handleCounter(application)}
@@ -397,21 +400,26 @@ const ApplicationManagementModal = ({ isOpen, onClose, property }) => {
                                                                 </button>
                                                             </>
                                                         )}
-                                                        {application.status === 'counter' && (
+                                                                                                                {application.status === 'counter' && (
                                                             <>
                                                                 <div className="px-4 py-2 bg-blue-50 text-blue-700 rounded-md font-bold text-xs uppercase tracking-wider text-center border border-blue-200 mb-2">
                                                                     Waiting for Seeker Response
                                                                 </div>
-                                                                <div className="flex justify-end">
-                                                                    <button
-                                                                        onClick={() => handleReject(application)}
-                                                                        disabled={processingId === application._id}
-                                                                        className="px-4 py-2 bg-red-600 text-white rounded-md font-bold text-xs uppercase tracking-wider hover:bg-red-700 transition-all disabled:opacity-50 flex items-center gap-2"
-                                                                    >
-                                                                        <XCircle size={14} />
-                                                                        Reject
-                                                                    </button>
-                                                                </div>
+                                                                <button
+                                                                    onClick={() => handleOpenHistory(application)}
+                                                                    className="w-full px-4 py-2 bg-purple-600 text-white rounded-md font-bold text-xs uppercase tracking-wider hover:bg-purple-700 transition-all flex items-center justify-center gap-2"
+                                                                >
+                                                                    <History size={14} />
+                                                                    History
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleReject(application)}
+                                                                    disabled={processingId === application._id}
+                                                                    className="w-full px-4 py-2 bg-red-600 text-white rounded-md font-bold text-xs uppercase tracking-wider hover:bg-red-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                                                >
+                                                                    <XCircle size={14} />
+                                                                    Reject
+                                                                </button>
                                                             </>
                                                         )}
                                                         {(application.status === 'deal-in-progress' || application.status === 'accepted') && (
@@ -419,6 +427,13 @@ const ApplicationManagementModal = ({ isOpen, onClose, property }) => {
                                                                 <div className="px-4 py-2 bg-orange-100 text-orange-700 rounded-md font-bold text-xs uppercase tracking-wider text-center mb-2">
                                                                     Deal in Progress
                                                                 </div>
+                                                                <button
+                                                                    onClick={() => handleOpenHistory(application)}
+                                                                    className="w-full px-4 py-2 bg-purple-600 text-white rounded-md font-bold text-xs uppercase tracking-wider hover:bg-purple-700 transition-all flex items-center justify-center gap-2 mb-2"
+                                                                >
+                                                                    <History size={14} />
+                                                                    History
+                                                                </button>
                                                                 <button
                                                                     onClick={() => navigate(`/chat?applicationId=${application._id}`)}
                                                                     className="w-full px-4 py-2 bg-blue-600 text-white rounded-md font-bold text-xs uppercase tracking-wider hover:bg-blue-700 transition-all flex items-center justify-center gap-2 mb-2"
@@ -499,6 +514,13 @@ const ApplicationManagementModal = ({ isOpen, onClose, property }) => {
                                                                     Completed
                                                                 </div>
                                                                 <button
+                                                                    onClick={() => handleOpenHistory(application)}
+                                                                    className="px-4 py-2 bg-purple-600 text-white rounded-md font-bold text-xs uppercase tracking-wider hover:bg-purple-700 transition-all flex items-center gap-2"
+                                                                >
+                                                                    <History size={14} />
+                                                                    History
+                                                                </button>
+                                                                <button
                                                                     onClick={() => {
                                                                         setSelectedApplicationForRating(application);
                                                                         setRateModalOpen(true);
@@ -511,16 +533,25 @@ const ApplicationManagementModal = ({ isOpen, onClose, property }) => {
                                                             </div>
                                                         )}
                                                         {(application.status === 'cancelled') && (
-                                                            <button
-                                                                onClick={() => {
-                                                                    setSelectedApplicationForRating(application);
-                                                                    setRateModalOpen(true);
-                                                                }}
-                                                                className="w-full px-4 py-2 bg-amber-500 text-white rounded-md font-bold text-xs uppercase tracking-wider hover:bg-amber-600 transition-all flex items-center justify-center gap-2"
-                                                            >
-                                                                <Star size={14} />
-                                                                Rate Buyer
-                                                            </button>
+                                                            <div className="space-y-2">
+                                                                <button
+                                                                    onClick={() => handleOpenHistory(application)}
+                                                                    className="px-4 py-2 bg-purple-600 text-white rounded-md font-bold text-xs uppercase tracking-wider hover:bg-purple-700 transition-all flex items-center gap-2"
+                                                                >
+                                                                    <History size={14} />
+                                                                    History
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setSelectedApplicationForRating(application);
+                                                                        setRateModalOpen(true);
+                                                                    }}
+                                                                    className="w-full px-4 py-2 bg-amber-500 text-white rounded-md font-bold text-xs uppercase tracking-wider hover:bg-amber-600 transition-all flex items-center justify-center gap-2"
+                                                                >
+                                                                    <Star size={14} />
+                                                                    Rate Buyer
+                                                                </button>
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>
@@ -554,6 +585,13 @@ const ApplicationManagementModal = ({ isOpen, onClose, property }) => {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-3">
+                                                    <button
+                                                        onClick={() => handleOpenHistory(application)}
+                                                        className="px-3 py-1.5 bg-purple-600 text-white rounded-md text-xs font-semibold hover:bg-purple-700 flex items-center gap-1"
+                                                    >
+                                                        <History size={12} />
+                                                        History
+                                                    </button>
                                                     <div className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${getApplicationStatusColor(application.status)}`}>
                                                         {getApplicationStatusDisplay(application.status, property)}
                                                     </div>
@@ -673,6 +711,16 @@ const ApplicationManagementModal = ({ isOpen, onClose, property }) => {
                 application={selectedApplicationForCounter}
                 property={property}
                 onSuccess={handleCounterModalSuccess}
+            />
+
+            <BiddingHistoryModal
+                isOpen={biddingHistoryModalOpen}
+                onClose={() => {
+                    setBiddingHistoryModalOpen(false);
+                    setSelectedApplicationForHistory(null);
+                }}
+                application={selectedApplicationForHistory}
+                viewerRole="owner"
             />
 
             <RateUserModal

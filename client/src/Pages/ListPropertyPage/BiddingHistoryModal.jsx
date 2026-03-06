@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, History, User, Building2, Clock } from 'lucide-react';
 
-const BiddingHistoryModal = ({ isOpen, onClose, application }) => {
+const BiddingHistoryModal = ({ isOpen, onClose, application, viewerRole = 'seeker' }) => {
     if (!isOpen || !application || !application.property) return null;
 
     const property = application.property;
@@ -16,6 +16,21 @@ const BiddingHistoryModal = ({ isOpen, onClose, application }) => {
     };
 
     const priceHistory = getPriceHistory();
+
+    const getEntryLabel = (entry) => {
+        const isSeeker = entry.setBy === 'seeker';
+        const isOwner = entry.setBy === 'owner';
+
+        if (viewerRole === 'owner') {
+            if (isOwner) return 'Your Counter Offer';
+            if (isSeeker) return "Buyer's Offer";
+            return 'Offer';
+        }
+
+        if (isSeeker) return 'Your Offer';
+        if (isOwner) return "Owner's Counter Offer";
+        return 'Offer';
+    };
 
     const formatDate = (timestamp) => {
         if (!timestamp) return 'N/A';
@@ -140,7 +155,7 @@ const BiddingHistoryModal = ({ isOpen, onClose, application }) => {
                                                                         : 'text-gray-900'
                                                                 }`}
                                                             >
-                                                                {isSeeker ? 'Your Offer' : isOwner ? "Owner's Counter Offer" : 'Offer'}
+                                                                {getEntryLabel(entry)}
                                                             </p>
                                                             <div className="flex items-center gap-1.5 mt-1">
                                                                 <Clock size={12} className="text-gray-500" />
