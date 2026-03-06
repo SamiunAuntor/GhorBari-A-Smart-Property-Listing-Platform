@@ -61,7 +61,14 @@ const FeaturedProperties = () => {
                     const divisionName = divisionMap.get(addressObj.division_id) || "";
                     const addressString = [addressObj.street, upazilaName, districtName, divisionName].filter(Boolean).join(", ");
 
-                    const isVerified = !!prop.isOwnerVerified;
+                    const rawVerified =
+                        prop.ownerNidVerified ??
+                        prop.isOwnerVerified ??
+                        prop.owner?.nidVerified ??
+                        prop.isVerified;
+                    const isVerified = typeof rawVerified === "string"
+                        ? rawVerified === "verified"
+                        : Boolean(rawVerified);
                     const isPremium = (listingType === "rent" && Number(prop.price) > 50000) || (listingType === "sale" && Number(prop.price) > 100000);
 
                     return {
@@ -75,7 +82,7 @@ const FeaturedProperties = () => {
                         propertyType,
                         addressString,
                         ownerRating: 0,
-                        ownerNidVerified: false,
+                        ownerNidVerified: isVerified,
                         isVerified,
                         isPremium,
                     };

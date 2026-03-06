@@ -219,7 +219,7 @@ const ProfilePage = () => {
                 <div className="relative flex flex-col md:flex-row items-center md:items-center gap-8">
 
                     {/* Avatar Container with Gradient Background */}
-                    <div className="relative p-1 bg-gradient-to-br from-yellow-400 to-orange-600 rounded-[2.8rem]">
+                    <div className="relative p-1 bg-orange-500 rounded-[2.8rem]">
                         <div className="relative group">
                             <img
                                 src={formData.profileImage || "https://i.ibb.co/5GzXpdx/default-user.png"}
@@ -255,7 +255,7 @@ const ProfilePage = () => {
                                 <Phone size={16} className="text-orange-400" /> {user.phone || "No phone added"}
                             </span>
                             <span className="flex items-center justify-center md:justify-start gap-2 text-gray-400 font-medium">
-                                <Star size={16} className="text-orange-400 fill-orange-400" /> Platform rating {user?.rating?.average || 'N/A'}
+                                <Star size={16} className="text-orange-400 fill-orange-400" /> {user?.rating?.average || 'N/A'}
                             </span>
                         </div>
                     </div>

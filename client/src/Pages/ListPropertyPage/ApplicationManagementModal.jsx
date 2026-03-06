@@ -260,8 +260,8 @@ const ApplicationManagementModal = ({ isOpen, onClose, property }) => {
     const otherApplications = applications.filter(app => !isActiveApplicationStatus(app.status));
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg max-w-4xl w-11/12 mx-auto max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center px-4 pt-[10vh] pb-4">
+            <div className="bg-white rounded-lg max-w-4xl w-11/12 mx-auto max-h-[80vh] overflow-y-auto shadow-2xl">
                 {/* Header */}
                 <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex items-center justify-between rounded-t-lg z-10">
                     <div>
