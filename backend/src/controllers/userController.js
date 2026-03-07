@@ -1,10 +1,5 @@
 import { getDatabase } from "../config/db.js";
 
-
-/**
- * Register a new user
- * POST /api/users/register-user
- */
 export const registerUser = async (req, res) => {
 
     try {
@@ -13,26 +8,16 @@ export const registerUser = async (req, res) => {
 
         const { email, name, profileImage = "", phone, role } = req.body;
 
+        if (!email || !name) return res.status(400).json({ message: "Email and name are required" });
 
-        // Validate required fields
-        if (!email || !name) {
-            return res.status(400).json({ message: "Email and name are required" });
-        }
-
-
-        // Set user role with validation
         const validRoles = ["property_seeker", "property_owner", "user", "admin"];
+
         const userRole = validRoles.includes(role) ? role : "user";
 
-
-        // Check if user already exists
         const existing = await db.collection("users").findOne({ email });
-        if (existing) {
-            return res.status(400).json({ message: "User already exists" });
-        }
 
+        if (existing) return res.status(400).json({ message: "User already exists" });
 
-        // Create new user document
         const result = await db.collection("users").insertOne({
             email,
             name,
@@ -48,56 +33,34 @@ export const registerUser = async (req, res) => {
             updatedAt: new Date()
         });
 
-        return res.status(201).json({
-            message: "User created successfully",
-            user: result.insertedId
-        });
+        return res.status(201).json({ message: "User created successfully", user: result.insertedId });
 
     } catch (error) {
 
         console.error("POST /register-user error:", error);
+
         res.status(500).json({ message: "Server error" });
 
     }
 
 };
 
-
-/**
- * Get multiple users by email addresses
- * GET /api/users/users-by-emails?emails=email1,email2
- */
 export const getUsersByEmails = async (req, res) => {
 
     try {
 
         const db = getDatabase();
+
         const emailsParam = req.query.emails;
 
+        if (!emailsParam) return res.status(400).json({ message: "emails query required" });
 
-        // Validate emails parameter
-        if (!emailsParam) {
-            return res.status(400).json({ message: "emails query required" });
-        }
+        const emails = emailsParam.split(",").map(e => e.trim()).filter(Boolean);
 
+        if (emails.length === 0) return res.json([]);
 
-        // Parse and clean email array
-        const emails = emailsParam
-            .split(",")
-            .map(e => e.trim())
-            .filter(Boolean);
-
-        if (emails.length === 0) {
-            return res.json([]);
-        }
-
-
-        // Fetch users with projection
         const users = await db.collection("users")
-            .find(
-                { email: { $in: emails } },
-                { projection: { email: 1, nidVerified: 1, rating: 1, name: 1 } }
-            )
+            .find({ email: { $in: emails } }, { projection: { email: 1, nidVerified: 1, rating: 1, name: 1 } })
             .toArray();
 
         return res.json(users);
@@ -105,17 +68,13 @@ export const getUsersByEmails = async (req, res) => {
     } catch (error) {
 
         console.error("GET /users-by-emails error:", error);
+
         res.status(500).json({ message: "Server error" });
 
     }
 
 };
 
-
-/**
- * Check if a user exists by email
- * GET /api/users/check-user?email=user@example.com
- */
 export const checkUserExist = async (req, res) => {
 
     try {
@@ -297,6 +256,65 @@ export const checkIsAdmin = async (req, res) => {
 
 };
 
+
+export const getPublicProfileMessageStatus = async (req, res) => {
+
+    try {
+
+        const db = getDatabase();
+        const currentUserEmail = req.user?.email;
+        const targetEmail = req.params.email;
+
+        if (!currentUserEmail) {
+            return res.status(401).send({ message: "Unauthorized" });
+        }
+
+        if (!targetEmail) {
+            return res.status(400).send({ message: "Target email is required" });
+        }
+
+        if (currentUserEmail === targetEmail) {
+            return res.send({
+                canMessage: false,
+                message: "You cannot message your own profile from here."
+            });
+        }
+
+        const activeDeal = await db.collection("applications")
+            .find({
+                status: "deal-in-progress",
+                $or: [
+                    { "owner.email": currentUserEmail, "seeker.email": targetEmail },
+                    { "owner.email": targetEmail, "seeker.email": currentUserEmail }
+                ]
+            })
+            .sort({ updatedAt: -1, createdAt: -1 })
+            .limit(1)
+            .toArray();
+
+        const application = activeDeal[0];
+
+        if (!application) {
+            return res.send({
+                canMessage: false,
+                message: "Messaging is available after one of your deals goes in progress with this user."
+            });
+        }
+
+        return res.send({
+            canMessage: true,
+            message: "You can message this user now.",
+            applicationId: application._id?.toString(),
+            propertyId: application.propertyId?.toString?.() || application.propertyId || null
+        });
+
+    } catch (error) {
+
+        res.status(500).send({ message: "Server error" });
+
+    }
+
+};
 export const getPublicProfile = async (req, res) => {
 
     try {
@@ -330,6 +348,6 @@ export const getPublicProfile = async (req, res) => {
         res.status(500).send({ message: "Server error" });
 
     }
-
+    
 };
 

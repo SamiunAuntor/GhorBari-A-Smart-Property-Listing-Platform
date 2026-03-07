@@ -149,12 +149,46 @@ export const getReceivedRatings = async (req, res) => {
             RatingModel.countReceived(db, email)
         ]);
 
+        const raterEmails = [...new Set(ratings.map((rating) => rating.raterEmail).filter(Boolean))];
+        const propertyIds = ratings
+            .map((rating) => rating.propertyId)
+            .filter(Boolean);
+
+        const [raters, properties] = await Promise.all([
+            raterEmails.length > 0
+                ? db.collection("users")
+                    .find({ email: { $in: raterEmails } }, { projection: { email: 1, name: 1, profileImage: 1 } })
+                    .toArray()
+                : [],
+            propertyIds.length > 0
+                ? db.collection("properties")
+                    .find({ _id: { $in: propertyIds } }, { projection: { title: 1 } })
+                    .toArray()
+                : []
+        ]);
+
+        const raterMap = new Map(raters.map((rater) => [rater.email, rater]));
+        const propertyMap = new Map(properties.map((property) => [property._id.toString(), property]));
+
+        const enrichedRatings = ratings.map((rating) => ({
+            ...rating,
+            rater: {
+                email: rating.raterEmail,
+                name: raterMap.get(rating.raterEmail)?.name || "User",
+                profileImage: raterMap.get(rating.raterEmail)?.profileImage || ""
+            },
+            propertyTitle: rating.propertyId ? propertyMap.get(rating.propertyId.toString())?.title || "Property" : "Property"
+        }));
+
+        const aggregate = await RatingModel.getAggregateForRatee(db, email);
+
         return res.status(200).json({
             success: true,
             total,
             skip,
             limit,
-            ratings
+            aggregate,
+            ratings: enrichedRatings
         });
     } catch (error) {
         console.error("GET /ratings/received/:email error:", error);

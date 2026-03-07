@@ -66,10 +66,7 @@ router.get("/user-profile", verifyToken, userController.getUserProfile);
 router.get("/users/admin/:email", verifyToken, userController.checkIsAdmin);
 
 
-/**
- * GET /api/public-profile/:email
- * Get sanitized public profile of user
- */
+router.get("/public-profile/:email/message-status", verifyToken, userController.getPublicProfileMessageStatus);
 router.get("/public-profile/:email", verifyToken, userController.getPublicProfile);
 
 
