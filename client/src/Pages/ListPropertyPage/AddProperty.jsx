@@ -339,19 +339,12 @@ const AddProperty = () => {
         <section className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50/30 to-gray-100 py-12">
             <div className="w-11/12 mx-auto">
                 {/* Header Section */}
-                <div className="mb-12 flex flex-col md:flex-row justify-between items-center gap-6">
+                <div className="mb-12">
                     <div className="text-center md:text-left">
                         
                         <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-4">
                             Add New <span className="bg-gradient-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent">Property</span>
                         </h1>
-                    </div>
-
-                    <div className="flex items-center gap-3 bg-white px-5 py-2.5 rounded-md border border-gray-100 shadow-sm">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                            Review time : <span className="text-gray-900">~24 Hours</span>
-                        </span>
                     </div>
                 </div>
 
