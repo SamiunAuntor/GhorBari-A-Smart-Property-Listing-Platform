@@ -3,6 +3,84 @@ import { getDatabase } from "../config/db.js";
 import { ObjectId } from "mongodb";
 import { findByNidNumber } from "../services/nidRegistryService.js";
 
+const INSIGHT_PERIODS = {
+    daily: 14,
+    weekly: 12,
+    monthly: 12
+};
+
+function getPeriodStart(date, period) {
+    const bucketDate = new Date(date);
+    bucketDate.setHours(0, 0, 0, 0);
+
+    if (period === "weekly") {
+        const day = bucketDate.getDay();
+        const diffToMonday = (day + 6) % 7;
+        bucketDate.setDate(bucketDate.getDate() - diffToMonday);
+        return bucketDate;
+    }
+
+    if (period === "monthly") {
+        bucketDate.setDate(1);
+        return bucketDate;
+    }
+
+    return bucketDate;
+}
+
+function shiftPeriod(date, period, amount) {
+    const shifted = new Date(date);
+
+    if (period === "weekly") {
+        shifted.setDate(shifted.getDate() + amount * 7);
+        return shifted;
+    }
+
+    if (period === "monthly") {
+        shifted.setMonth(shifted.getMonth() + amount);
+        return shifted;
+    }
+
+    shifted.setDate(shifted.getDate() + amount);
+    return shifted;
+}
+
+function formatPeriodLabel(date, period) {
+    if (period === "weekly") {
+        return `Week of ${date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`;
+    }
+
+    if (period === "monthly") {
+        return date.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+    }
+
+    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+}
+
+function buildTimeBuckets(period) {
+    const totalBuckets = INSIGHT_PERIODS[period] || INSIGHT_PERIODS.daily;
+    const currentBucketStart = getPeriodStart(new Date(), period);
+    const buckets = [];
+
+    for (let index = totalBuckets - 1; index >= 0; index -= 1) {
+        const bucketStart = shiftPeriod(currentBucketStart, period, -index);
+        const bucketKey = bucketStart.toISOString();
+        buckets.push({
+            key: bucketKey,
+            label: formatPeriodLabel(bucketStart, period),
+            sold: 0,
+            rented: 0,
+            registrations: 0
+        });
+    }
+
+    return buckets;
+}
+
+function getBucketKey(date, period) {
+    return getPeriodStart(date, period).toISOString();
+}
+
 export const getPendingVerifications = async (req, res) => {
 
     try {
@@ -315,6 +393,119 @@ export const getStats = async (req, res) => {
     
         res.status(500).send({ message: "Server error" });
     
+    }
+
+};
+
+export const getDashboardInsights = async (req, res) => {
+
+    try {
+
+        const db = getDatabase();
+        const period = ["daily", "weekly", "monthly"].includes(req.query.period) ? req.query.period : "daily";
+
+        const [
+            activeCount,
+            inProgressCount,
+            soldCount,
+            rentedCount,
+            hiddenCount,
+            unverifiedUsers,
+            pendingUsers,
+            verifiedUsers,
+            rejectedUsers,
+            dealProperties,
+            users
+        ] = await Promise.all([
+            db.collection("properties").countDocuments({ status: "active" }),
+            db.collection("properties").countDocuments({ status: "deal-in-progress" }),
+            db.collection("properties").countDocuments({ status: "sold" }),
+            db.collection("properties").countDocuments({ status: "rented" }),
+            db.collection("properties").countDocuments({ status: "hidden" }),
+            db.collection("users").countDocuments({ $or: [{ nidVerified: "unverified" }, { nidVerified: { $exists: false } }] }),
+            db.collection("users").countDocuments({ nidVerified: "pending" }),
+            db.collection("users").countDocuments({ nidVerified: "verified" }),
+            db.collection("users").countDocuments({ nidVerified: "rejected" }),
+            db.collection("properties").find(
+                { status: { $in: ["sold", "rented"] } },
+                { projection: { status: 1, updatedAt: 1, createdAt: 1 } }
+            ).toArray(),
+            db.collection("users").find(
+                {},
+                { projection: { createdAt: 1 } }
+            ).toArray()
+        ]);
+
+        const timeBuckets = buildTimeBuckets(period);
+        const timeBucketMap = new Map(timeBuckets.map((bucket) => [bucket.key, bucket]));
+        const firstBucketDate = new Date(timeBuckets[0].key);
+
+        dealProperties.forEach((property) => {
+            const sourceDate = property.updatedAt || property.createdAt;
+            if (!sourceDate) {
+                return;
+            }
+
+            const eventDate = new Date(sourceDate);
+            if (Number.isNaN(eventDate.getTime()) || eventDate < firstBucketDate) {
+                return;
+            }
+
+            const bucket = timeBucketMap.get(getBucketKey(eventDate, period));
+            if (!bucket) {
+                return;
+            }
+
+            if (property.status === "sold") {
+                bucket.sold += 1;
+            }
+
+            if (property.status === "rented") {
+                bucket.rented += 1;
+            }
+        });
+
+        users.forEach((user) => {
+            if (!user.createdAt) {
+                return;
+            }
+
+            const createdAt = new Date(user.createdAt);
+            if (Number.isNaN(createdAt.getTime()) || createdAt < firstBucketDate) {
+                return;
+            }
+
+            const bucket = timeBucketMap.get(getBucketKey(createdAt, period));
+            if (bucket) {
+                bucket.registrations += 1;
+            }
+        });
+
+        res.send({
+            period,
+            listingStatus: [
+                { name: "Active", value: activeCount },
+                { name: "In Progress", value: inProgressCount },
+                { name: "Sold", value: soldCount },
+                { name: "Rented", value: rentedCount },
+                { name: "Hidden", value: hiddenCount }
+            ],
+            verificationStates: [
+                { name: "Unverified", value: unverifiedUsers },
+                { name: "Pending", value: pendingUsers },
+                { name: "Verified", value: verifiedUsers },
+                { name: "Rejected", value: rejectedUsers }
+            ],
+            dealTrend: timeBuckets.map(({ label, sold, rented }) => ({ label, sold, rented })),
+            registrationTrend: timeBuckets.map(({ label, registrations }) => ({ label, registrations }))
+        });
+
+    } catch (error) {
+
+        console.error("GET /admin/dashboard-insights error:", error);
+
+        res.status(500).send({ message: "Server error" });
+
     }
 
 };
