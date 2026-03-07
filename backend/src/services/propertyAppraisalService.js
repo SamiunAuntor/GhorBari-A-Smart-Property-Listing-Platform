@@ -83,11 +83,20 @@ function normalizeConfidence(value) {
     return ["low", "medium", "high"].includes(normalized) ? normalized : "medium";
 }
 
-function normalizeMarketPosition(value) {
-    const normalized = compactText(value).toLowerCase();
-    return ["underpriced", "fairly-priced", "overpriced"].includes(normalized)
-        ? normalized
-        : "fairly-priced";
+function deriveMarketPosition(listedPrice, minPrice, maxPrice) {
+    if (!listedPrice || !minPrice || !maxPrice) {
+        return "fairly-priced";
+    }
+
+    if (listedPrice < minPrice) {
+        return "underpriced";
+    }
+
+    if (listedPrice > maxPrice) {
+        return "overpriced";
+    }
+
+    return "fairly-priced";
 }
 
 function normalizeAppraisal(parsed, listedPrice) {
@@ -103,7 +112,11 @@ function normalizeAppraisal(parsed, listedPrice) {
         minPrice: Math.min(normalizedMin, normalizedMax),
         maxPrice: Math.max(normalizedMin, normalizedMax),
         confidence: normalizeConfidence(parsed?.confidence),
-        marketPosition: normalizeMarketPosition(parsed?.marketPosition),
+        marketPosition: deriveMarketPosition(
+            listedPrice,
+            Math.min(normalizedMin, normalizedMax),
+            Math.max(normalizedMin, normalizedMax)
+        ),
         summary: compactText(parsed?.summary),
         reasoning: normalizeReasoning(parsed?.reasoning),
         generatedAt: new Date(),
@@ -147,6 +160,10 @@ Rules:
 - fairPrice, minPrice, and maxPrice must be monthly BDT for rent listings and total BDT for sale listings.
 - confidence must be one of: low, medium, high.
 - marketPosition must be one of: underpriced, fairly-priced, overpriced.
+- marketPosition must strictly reflect the listed price versus your own estimated range:
+  - underpriced if listed price is below minPrice
+  - fairly-priced if listed price is between minPrice and maxPrice
+  - overpriced if listed price is above maxPrice
 - summary must be one short sentence.
 - reasoning must be an array of 2 to 4 short strings.
 
