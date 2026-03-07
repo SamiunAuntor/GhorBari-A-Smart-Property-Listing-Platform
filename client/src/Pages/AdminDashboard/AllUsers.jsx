@@ -289,7 +289,7 @@ const AllUsers = () => {
                                                     return (
                                                         <button
                                                             onClick={() => handleVerify(user)}
-                                                            className="text-[10px] font-black uppercase border rounded-lg px-2.5 py-1.5 outline-none cursor-pointer transition-all border-emerald-100 text-emerald-600 bg-emerald-50 hover:bg-emerald-100"
+                                                            className="text-[10px] font-black uppercase border rounded-lg px-2.5 py-1.5 outline-none cursor-pointer transition-all border-blue-100 text-blue-600 bg-blue-50 hover:bg-blue-100"
                                                         >
                                                             Verify User
                                                         </button>

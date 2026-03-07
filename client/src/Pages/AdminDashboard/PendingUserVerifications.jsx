@@ -51,6 +51,20 @@ const PendingUserVerifications = () => {
         });
     };
 
+    const handleVerify = (user) => {
+        Swal.fire({
+            title: 'Verify this user from NID registry?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#344767',
+            confirmButtonText: 'Yes, update it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                verifyByRegistryMutation.mutate({ id: user._id });
+            }
+        });
+    };
+
     if (isLoading) return <Loading />;
 
     return (
@@ -137,8 +151,8 @@ const PendingUserVerifications = () => {
                                 <td className="px-4 py-5">
                                     <div className="flex items-center justify-center gap-2">
                                         <button
-                                            onClick={() => verifyByRegistryMutation.mutate({ id: user._id })}
-                                            className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all flex items-center gap-2 text-[11px] font-black uppercase tracking-widest border border-emerald-100"
+                                            onClick={() => handleVerify(user)}
+                                            className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all flex items-center gap-2 text-[11px] font-black uppercase tracking-widest border border-blue-100"
                                         >
                                             <UserCheck size={14} />
                                             Verify User
