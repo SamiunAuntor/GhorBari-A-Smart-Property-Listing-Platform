@@ -294,8 +294,8 @@ export const getStats = async (req, res) => {
         const db = getDatabase();
     
         const pendingVer = await db.collection("users").countDocuments({ nidImages: { $exists: true, $ne: [] }, nidVerified: "pending" });
-    
-        const pendingList = await db.collection("properties").countDocuments({ status: "pending" });
+
+        const verifiedUsers = await db.collection("users").countDocuments({ nidVerified: "verified" });
     
         const activeList = await db.collection("properties").countDocuments({ status: "active" });
     
@@ -305,7 +305,7 @@ export const getStats = async (req, res) => {
 
         res.send({
             pendingVer,
-            pendingList,
+            verifiedUsers,
             activeList,
             rentedCount,
             soldCount

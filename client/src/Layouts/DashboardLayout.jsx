@@ -3,10 +3,8 @@ import { Outlet, NavLink, useNavigate } from 'react-router';
 import {
     LayoutDashboard,
     Home,
-    ClipboardList,
     UserCheck,
     LogOut,
-    Building2,
     Users,
     Layers
 } from 'lucide-react';
@@ -21,16 +19,6 @@ const DashboardLayout = () => {
     const { logoutUser } = useAuth();
     const navigate = useNavigate();
     const axiosSecure = useAxiosSecure();
-
-    // Fetch pending counts for badges
-    const { data: pendingProperties = [] } = useQuery({
-        queryKey: ['pending-properties'],
-        queryFn: async () => {
-            const res = await axiosSecure.get('/admin/pending-properties');
-            return res.data;
-        },
-        refetchInterval: 30000, // Refetch every 30 seconds
-    });
 
     const { data: pendingUsers = [] } = useQuery({
         queryKey: ['pending-users'],
@@ -55,7 +43,6 @@ const DashboardLayout = () => {
 
     const navItems = [
         { icon: LayoutDashboard, label: 'Admin Dashboard', path: '/admin-dashboard', badge: null },
-        { icon: ClipboardList, label: 'Pending Property Approvals', path: '/admin-dashboard/pending-properties', badge: pendingProperties.length },
         { icon: UserCheck, label: 'Pending User Verifications', path: '/admin-dashboard/pending-verifications', badge: pendingUsers.length },
         { icon: Users, label: 'All Users', path: '/admin-dashboard/all-users', badge: null },
         { icon: Layers, label: 'All Property Listings', path: '/admin-dashboard/all-properties', badge: null },

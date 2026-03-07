@@ -15,7 +15,6 @@ import PublicUserProfile from "./Pages/ProfilePage/PublicUserProfile";
 import DashboardLayout from "./Layouts/DashboardLayout";
 import AdminDashboardHome from "./Pages/AdminDashboard/AdminDashboardHome";
 import AdminRoute from "./PrivateRoute/AdminRoute";
-import PendingPropertyListings from "./Pages/AdminDashboard/PendingPropertyListings";
 import PendingUserVerifications from "./Pages/AdminDashboard/PendingUserVerifications";
 import AllUsers from "./Pages/AdminDashboard/AllUsers";
 import AllPropertyListings from "./Pages/AdminDashboard/AllPropertyListings";
@@ -91,10 +90,6 @@ const router = createBrowserRouter([
             {
                 index: true,
                 element: <AdminDashboardHome></AdminDashboardHome>
-            },
-            {
-                path: "pending-properties",
-                element: <AdminRoute><PendingPropertyListings></PendingPropertyListings></AdminRoute>
             },
             {
                 path: "pending-verifications",
