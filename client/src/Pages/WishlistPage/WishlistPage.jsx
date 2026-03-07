@@ -1,11 +1,47 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import useWishlist from '../../Hooks/useWishlist';
 import useAuth from '../../Hooks/useAuth';
 import WishlistPropertyCard from './WishlistPropertyCard';
 
+const PAGE_SIZE = 12;
+
 const WishlistPage = () => {
     const { user } = useAuth();
     const { wishlistItems, loading } = useWishlist();
+    const [currentPage, setCurrentPage] = useState(1);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [wishlistItems.length]);
+
+    const totalItems = wishlistItems.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+    const startIdx = (currentPage - 1) * PAGE_SIZE;
+    const pageItems = useMemo(
+        () => wishlistItems.slice(startIdx, startIdx + PAGE_SIZE),
+        [wishlistItems, startIdx]
+    );
+
+    const renderPager = () => {
+        if (totalPages <= 1) return null;
+        const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+        return (
+            <div className="flex items-center justify-center gap-2 mt-8">
+                {pages.map((p) => (
+                    <button
+                        key={p}
+                        onClick={() => {
+                            setCurrentPage(p);
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        className={`px-3 py-2 rounded-md ${p === currentPage ? 'bg-orange-500 text-white' : 'bg-white border'}`}
+                    >
+                        {p}
+                    </button>
+                ))}
+            </div>
+        );
+    };
 
     if (!user) {
         return (
@@ -46,18 +82,21 @@ const WishlistPage = () => {
                     <div className="flex justify-center items-center py-20">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
                     </div>
-                ) : wishlistItems.length === 0 ? (
+                ) : totalItems === 0 ? (
                     <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-gray-200">
                         <p className="text-gray-400 text-lg">Your wishlist is currently empty.</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                        {wishlistItems.map((item) => (
-                            <div key={item._id} className="group flex flex-col">
-                                <WishlistPropertyCard property={item} />
-                            </div>
-                        ))}
-                    </div>
+                    <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                            {pageItems.map((item) => (
+                                <div key={item._id} className="group flex flex-col">
+                                    <WishlistPropertyCard property={item} />
+                                </div>
+                            ))}
+                        </div>
+                        {renderPager()}
+                    </>
                 )}
             </div>
         </div>
