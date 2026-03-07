@@ -321,7 +321,11 @@ const ApplicationManagementModal = ({ isOpen, onClose, property }) => {
                                                             </div>
                                                             <div className="flex-1">
                                                                 <div className="flex items-center gap-2 mb-1">
-                                                                    <h4 className="font-bold text-gray-900">{application.seeker.name}</h4>
+                                                                    <h4
+                                                                        onClick={() => navigate(`/owner-profile/${application.seeker.email}`)}
+                                                                        className="font-bold text-gray-900 cursor-pointer hover:text-orange-600 transition-colors"
+                                                                        title="View Applicant Public Profile"
+                                                                    >{application.seeker.name}</h4>
                                                                     <div className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${getApplicationStatusColor(application.status)}`}>
                                                                         {getApplicationStatusDisplay(application.status, property)}
                                                                     </div>
@@ -580,7 +584,11 @@ const ApplicationManagementModal = ({ isOpen, onClose, property }) => {
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <p className="font-bold text-sm text-gray-900">{application.seeker.name}</p>
+                                                        <p
+                                                            onClick={() => navigate(`/owner-profile/${application.seeker.email}`)}
+                                                            className="font-bold text-sm text-gray-900 cursor-pointer hover:text-orange-600 transition-colors"
+                                                            title="View Applicant Public Profile"
+                                                        >{application.seeker.name}</p>
                                                         <p className="text-xs text-gray-500">{new Date(application.createdAt).toLocaleDateString()}</p>
                                                     </div>
                                                 </div>
