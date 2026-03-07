@@ -184,8 +184,8 @@ const AllUsers = () => {
             </div>
 
             {/* TABLE */}
-            <div className="overflow-hidden">
-                <table className="w-full text-center table-auto border-collapse">
+            <div className="overflow-x-auto overflow-y-hidden">
+                <table className={`w-full ${paginatedUsers.length > 0 ? "min-w-[1120px]" : ""} text-center table-auto border-collapse`}>
                     {paginatedUsers.length > 0 && (
                         <thead className="bg-[#f8f9fa]">
                             <tr className="text-[11px] uppercase text-[#344767] font-black tracking-widest border-b border-gray-200">

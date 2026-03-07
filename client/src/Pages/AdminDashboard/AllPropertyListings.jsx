@@ -226,8 +226,8 @@ const AllPropertyListings = () => {
             </div>
 
             {/* TABLE */}
-            <div className="overflow-hidden">
-                <table className="w-full text-center table-auto border-collapse">
+            <div className="overflow-x-auto overflow-y-hidden">
+                <table className={`w-full ${paginatedProperties.length > 0 ? "min-w-[1120px]" : ""} text-center table-auto border-collapse`}>
                     {paginatedProperties.length > 0 && (
                         <thead className="bg-[#f8f9fa]">
                             <tr className="text-[10px] uppercase text-[#344767] font-black tracking-wider border-b border-gray-200">

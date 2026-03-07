@@ -78,8 +78,8 @@ const PendingUserVerifications = () => {
             </div>
 
             {/* VISIBLE GRID TABLE */}
-            <div className="overflow-x-auto">
-                <table className="w-full text-center table-auto border-collapse">
+            <div className="overflow-x-auto overflow-y-hidden">
+                <table className={`w-full ${users.length > 0 ? "min-w-[1040px]" : ""} text-center table-auto border-collapse`}>
                     {users.length > 0 && (
                         <thead className="bg-[#f8f9fa]">
                             <tr className="text-[11px] uppercase text-[#344767] font-black tracking-widest border-b border-gray-200">

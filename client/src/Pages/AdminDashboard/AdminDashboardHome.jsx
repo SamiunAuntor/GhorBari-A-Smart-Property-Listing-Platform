@@ -104,7 +104,7 @@ const AdminDashboardHome = () => {
     );
 
     return (
-        <div className="space-y-10 animate-in fade-in duration-500 p-4">
+        <div className="space-y-10 animate-in fade-in duration-500 p-4 overflow-x-hidden">
             <div className="mb-8">
                 <h1 className="text-3xl font-black text-[#344767] uppercase tracking-tight">
                     GhorBari Admin Dashboard
