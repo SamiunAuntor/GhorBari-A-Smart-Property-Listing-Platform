@@ -17,10 +17,35 @@ import {
 import useAuth from "../../Hooks/useAuth";
 
 const PAGE_SIZE = 12;
+const initialFilterState = {
+    divisionId: "",
+    districtId: "",
+    upazilaId: "",
+    minPrice: "",
+    maxPrice: "",
+    propertyType: "all",
+    minArea: "",
+    maxArea: "",
+    onlyVerified: false,
+    listingType: "all"
+};
+
+const buildFiltersFromSearchParams = (params) => ({
+    divisionId: params.get("division_id") || "",
+    districtId: params.get("district_id") || "",
+    upazilaId: params.get("upazila_id") || "",
+    minPrice: params.get("minPrice") || "",
+    maxPrice: params.get("maxPrice") || "",
+    propertyType: params.get("propertyType") || "all",
+    minArea: params.get("minArea") || "",
+    maxArea: params.get("maxArea") || "",
+    onlyVerified: params.get("onlyVerified") === "true",
+    listingType: params.get("listingType") || "all"
+});
 
 const BuyOrRentPage = () => {
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const axiosInstance = useAxios();
     const { user: authUser, loading: authLoading } = useAuth();
 
@@ -34,22 +59,15 @@ const BuyOrRentPage = () => {
     // Filter Logic States - Initialize from URL params
     const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
     const [sortBy, setSortBy] = useState("newest");
-
-    const initialFilterState = {
-        minPrice: "",
-        maxPrice: "",
-        propertyType: "all",
-        minArea: "",
-        maxArea: "",
-        onlyVerified: false,
-        listingType: "all"
-    };
-
-    const [tempFilters, setTempFilters] = useState(initialFilterState);
-    const [appliedFilters, setAppliedFilters] = useState(initialFilterState);
+    const [tempFilters, setTempFilters] = useState(() => buildFiltersFromSearchParams(searchParams));
+    const [appliedFilters, setAppliedFilters] = useState(() => buildFiltersFromSearchParams(searchParams));
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
+    const [divisions, setDivisions] = useState([]);
+    const [districts, setDistricts] = useState([]);
+    const [upazilas, setUpazilas] = useState([]);
+    const [thanas, setThanas] = useState([]);
 
     const fetchGeoFiles = useCallback(async () => {
         const [divisionsRes, districtsRes, upzillasRes, thanasRes] = await Promise.all([
@@ -159,14 +177,56 @@ const BuyOrRentPage = () => {
         }
     }, [authLoading, fetchProperties]);
 
-    // Update search query when URL params change
     useEffect(() => {
-        const searchParam = searchParams.get("search");
-        setSearchQuery(searchParam || "");
+        const loadGeoData = async () => {
+            try {
+                const [divisionsRes, districtsRes, upzillasRes, thanasRes] = await Promise.all([
+                    fetch("/divisions.json"),
+                    fetch("/districts.json"),
+                    fetch("/upzillas.json"),
+                    fetch("/thanas.json"),
+                ]);
+                const [divisionsData, districtsData, upazilasData, thanasData] = await Promise.all([
+                    divisionsRes.json(),
+                    districtsRes.json(),
+                    upzillasRes.json(),
+                    thanasRes.json(),
+                ]);
+                setDivisions(divisionsData);
+                setDistricts(districtsData);
+                setUpazilas(upazilasData);
+                setThanas(thanasData);
+            } catch (error) {
+                console.error("Failed to load geo options:", error);
+            }
+        };
+        loadGeoData();
+    }, []);
+
+    // Keep UI filters synced with URL params (from banner and direct navigation)
+    useEffect(() => {
+        setSearchQuery(searchParams.get("search") || "");
+        const parsedFilters = buildFiltersFromSearchParams(searchParams);
+        setTempFilters(parsedFilters);
+        setAppliedFilters(parsedFilters);
     }, [searchParams]);
+
+    const filteredDistricts = useMemo(() => (
+        districts.filter((d) => String(d.division_id) === String(tempFilters.divisionId))
+    ), [districts, tempFilters.divisionId]);
+
+    const filteredUpazilas = useMemo(() => {
+        const upazilaItems = upazilas.filter((u) => String(u.district_id) === String(tempFilters.districtId));
+        const thanaItems = thanas.filter((t) => String(t.district_id) === String(tempFilters.districtId));
+        return [...upazilaItems, ...thanaItems];
+    }, [upazilas, thanas, tempFilters.districtId]);
 
     const filteredProperties = useMemo(() => {
         let result = [...properties];
+        if (appliedFilters.divisionId) result = result.filter(p => String(p.address?.division_id) === String(appliedFilters.divisionId));
+        if (appliedFilters.districtId) result = result.filter(p => String(p.address?.district_id) === String(appliedFilters.districtId));
+        if (appliedFilters.upazilaId) result = result.filter(p => String(p.address?.upazila_id) === String(appliedFilters.upazilaId));
+
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
             result = result.filter(p => p.title?.toLowerCase().includes(q) || p.addressString?.toLowerCase().includes(q));
@@ -192,12 +252,27 @@ const BuyOrRentPage = () => {
         setAppliedFilters(tempFilters);
         setCurrentPage(1);
         setShowFilters(false);
+        const nextParams = new URLSearchParams();
+        if (searchQuery.trim()) nextParams.set("search", searchQuery.trim());
+        if (tempFilters.divisionId) nextParams.set("division_id", tempFilters.divisionId);
+        if (tempFilters.districtId) nextParams.set("district_id", tempFilters.districtId);
+        if (tempFilters.upazilaId) nextParams.set("upazila_id", tempFilters.upazilaId);
+        if (tempFilters.listingType !== "all") nextParams.set("listingType", tempFilters.listingType);
+        if (tempFilters.propertyType !== "all") nextParams.set("propertyType", tempFilters.propertyType);
+        if (tempFilters.minPrice) nextParams.set("minPrice", tempFilters.minPrice);
+        if (tempFilters.maxPrice) nextParams.set("maxPrice", tempFilters.maxPrice);
+        if (tempFilters.minArea) nextParams.set("minArea", tempFilters.minArea);
+        if (tempFilters.maxArea) nextParams.set("maxArea", tempFilters.maxArea);
+        if (tempFilters.onlyVerified) nextParams.set("onlyVerified", "true");
+        setSearchParams(nextParams, { replace: true });
     };
 
     const handleResetFilters = () => {
         setTempFilters(initialFilterState);
         setAppliedFilters(initialFilterState);
+        setSearchQuery("");
         setCurrentPage(1);
+        setSearchParams({}, { replace: true });
     };
 
     const totalItems = filteredProperties.length;
@@ -273,7 +348,57 @@ const BuyOrRentPage = () => {
 
                 {showFilters && (
                     <div className="bg-white p-8 rounded-lg shadow-2xl border border-gray-100 space-y-8 animate-in fade-in zoom-in-95 duration-200">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            <div className="space-y-3">
+                                <label className="text-sm font-bold text-slate-700">Division</label>
+                                <select
+                                    className="w-full p-3 bg-slate-50 border border-gray-200 rounded-md text-sm outline-none focus:bg-white focus:ring-2 focus:ring-orange-500 transition-all"
+                                    value={tempFilters.divisionId}
+                                    onChange={(e) => setTempFilters({
+                                        ...tempFilters,
+                                        divisionId: e.target.value,
+                                        districtId: "",
+                                        upazilaId: ""
+                                    })}
+                                >
+                                    <option value="">Any Division</option>
+                                    {divisions.map((division) => (
+                                        <option key={division.id} value={division.id}>{division.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="space-y-3">
+                                <label className="text-sm font-bold text-slate-700">District</label>
+                                <select
+                                    className="w-full p-3 bg-slate-50 border border-gray-200 rounded-md text-sm outline-none focus:bg-white focus:ring-2 focus:ring-orange-500 transition-all disabled:opacity-50"
+                                    value={tempFilters.districtId}
+                                    disabled={!tempFilters.divisionId}
+                                    onChange={(e) => setTempFilters({
+                                        ...tempFilters,
+                                        districtId: e.target.value,
+                                        upazilaId: ""
+                                    })}
+                                >
+                                    <option value="">Any District</option>
+                                    {filteredDistricts.map((district) => (
+                                        <option key={district.id} value={district.id}>{district.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="space-y-3">
+                                <label className="text-sm font-bold text-slate-700">Upazila / Thana</label>
+                                <select
+                                    className="w-full p-3 bg-slate-50 border border-gray-200 rounded-md text-sm outline-none focus:bg-white focus:ring-2 focus:ring-orange-500 transition-all disabled:opacity-50"
+                                    value={tempFilters.upazilaId}
+                                    disabled={!tempFilters.districtId}
+                                    onChange={(e) => setTempFilters({ ...tempFilters, upazilaId: e.target.value })}
+                                >
+                                    <option value="">Any Upazila/Thana</option>
+                                    {filteredUpazilas.map((location) => (
+                                        <option key={location.id} value={location.id}>{location.name}</option>
+                                    ))}
+                                </select>
+                            </div>
                             <div className="space-y-3">
                                 <label className="text-sm font-bold text-slate-700">Price Range (৳)</label>
                                 <div className="flex items-center gap-2">

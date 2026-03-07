@@ -1,7 +1,8 @@
-import React from "react";
-import { Search, Sparkles, ArrowRight } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Sparkles, ArrowRight, MapPin, ChevronDown } from "lucide-react";
 import { Typewriter } from "react-simple-typewriter";
 import { useNavigate } from "react-router";
+import { useQuery } from "@tanstack/react-query";
 
 // Swiper
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -109,85 +110,339 @@ const Banner = () => {
 };
 
 const SearchCard = () => {
-    const [value, setValue] = React.useState("");
-    const [focused, setFocused] = React.useState(false);
     const navigate = useNavigate();
 
-    const handleSearch = () => {
-        const searchQuery = value.trim();
-        if (searchQuery) {
-            navigate(`/properties?search=${encodeURIComponent(searchQuery)}`);
-        } else {
-            navigate("/properties");
+    // Fetch geo data
+    const { data: divisions = [] } = useQuery({
+        queryKey: ["divisions"],
+        queryFn: () => fetch("/divisions.json").then(res => res.json())
+    });
+    const { data: districts = [] } = useQuery({
+        queryKey: ["districts"],
+        queryFn: () => fetch("/districts.json").then(res => res.json())
+    });
+    const { data: upazilas = [] } = useQuery({
+        queryKey: ["upazilas"],
+        queryFn: () => fetch("/upzillas.json").then(res => res.json())
+    });
+
+    // Filter states
+    const [selectedDivision, setSelectedDivision] = useState("");
+    const [selectedDistrict, setSelectedDistrict] = useState("");
+    const [selectedUpazila, setSelectedUpazila] = useState("");
+    const [listingType, setListingType] = useState("all");
+    const [minPrice, setMinPrice] = useState("");
+    const [maxPrice, setMaxPrice] = useState("");
+    const [minArea, setMinArea] = useState("");
+    const [maxArea, setMaxArea] = useState("");
+    const [propertyType, setPropertyType] = useState("all");
+
+    // Reset cascading selects
+    useEffect(() => {
+        if (selectedDivision) {
+            setSelectedDistrict("");
+            setSelectedUpazila("");
         }
+    }, [selectedDivision]);
+
+    useEffect(() => {
+        if (selectedDistrict) {
+            setSelectedUpazila("");
+        }
+    }, [selectedDistrict]);
+
+    // Filter options based on selection
+    const filteredDistricts = districts.filter(
+        d => String(d.division_id) === String(selectedDivision)
+    );
+    const filteredUpazilas = upazilas.filter(
+        u => String(u.district_id) === String(selectedDistrict)
+    );
+
+    // Build URL and navigate
+    const handleSearch = () => {
+        const params = new URLSearchParams();
+
+        if (selectedDivision) params.append("division_id", selectedDivision);
+        if (selectedDistrict) params.append("district_id", selectedDistrict);
+        if (selectedUpazila) params.append("upazila_id", selectedUpazila);
+        if (listingType !== "all") params.append("listingType", listingType);
+        if (minPrice) params.append("minPrice", minPrice);
+        if (maxPrice) params.append("maxPrice", maxPrice);
+        if (minArea) params.append("minArea", minArea);
+        if (maxArea) params.append("maxArea", maxArea);
+        if (propertyType !== "all") params.append("propertyType", propertyType);
+
+        const queryString = params.toString();
+        navigate(`/properties${queryString ? `?${queryString}` : ""}`);
     };
 
-    const handleKeyPress = (e) => {
-        if (e.key === "Enter") {
-            handleSearch();
-        }
-    };
+    // Reusable styles
+    const baseInputStyle = "w-full p-3 bg-gray-50 border border-gray-200 rounded-md text-sm outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all";
+    const selectStyle = `${baseInputStyle} cursor-pointer appearance-none`;
+    const inputStyle = `${baseInputStyle}`;
+
+    // Reusable filter field component
+    const FilterField = ({ label, children, className = "" }) => (
+        <div className={className}>
+            <label className="block text-xs font-semibold text-gray-700 mb-2">{label}</label>
+            {children}
+        </div>
+    );
+
+    // Location select component
+    const LocationSelect = ({ value, onChange, options, placeholder, disabled = false, hasMapIcon = false }) => (
+        <div className="relative">
+            {hasMapIcon ? (
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" size={16} />
+            ) : (
+                <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" size={16} />
+            )}
+            <select
+                value={value}
+                onChange={onChange}
+                disabled={disabled}
+                className={`${selectStyle} pl-10 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+                <option value="">{placeholder}</option>
+                {options.map(opt => (
+                    <option key={opt.id} value={opt.id}>{opt.name}</option>
+                ))}
+            </select>
+        </div>
+    );
+
+    // Regular select component with dropdown icon
+    const SelectWithIcon = ({ value, onChange, children, disabled = false }) => (
+        <div className="relative">
+            <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" size={16} />
+            <select
+                value={value}
+                onChange={onChange}
+                disabled={disabled}
+                className={`${selectStyle} pl-10 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+                {children}
+            </select>
+        </div>
+    );
 
     return (
-        <div className="bg-white rounded-md lg:rounded-lg shadow-xl lg:shadow-2xl p-5 lg:p-8 border border-gray-100">
-            <div className="flex flex-col md:flex-row items-center gap-4">
-                {/* Input */}
-                <div className="relative flex items-center flex-1 w-full">
-                    <Search className="absolute left-4 text-gray-400" size={20} />
+        <div className="bg-white rounded-lg shadow-2xl p-6 lg:p-8 border border-gray-100">
+            {/* Desktop Layout - Two Rows */}
+            <div className="hidden lg:block space-y-4">
+                {/* Row 1: Location & Type Filters */}
+                <div className="grid grid-cols-5 gap-4">
+                    <FilterField label="Division">
+                        <LocationSelect
+                            value={selectedDivision}
+                            onChange={(e) => setSelectedDivision(e.target.value)}
+                            options={divisions}
+                            placeholder="Any Division"
+                            hasMapIcon={true}
+                        />
+                    </FilterField>
 
-                    <input
-                        type="text"
-                        value={value}
-                        onChange={(e) => setValue(e.target.value)}
-                        onFocus={() => setFocused(true)}
-                        onBlur={() => setFocused(false)}
-                        onKeyPress={handleKeyPress}
-                        className="w-full pl-12 pr-4 py-4 lg:py-5 bg-gray-50 rounded-md
-              border border-gray-100 focus:border-orange-300 focus:bg-white
-              outline-none transition-all text-sm lg:text-lg font-medium"
-                    />
+                    <FilterField label="District">
+                        <LocationSelect
+                            value={selectedDistrict}
+                            onChange={(e) => setSelectedDistrict(e.target.value)}
+                            options={filteredDistricts}
+                            placeholder="Any District"
+                            disabled={!selectedDivision}
+                        />
+                    </FilterField>
 
-                    {!value && !focused && (
-                        <div className="absolute left-12 text-gray-400 text-sm lg:text-lg pointer-events-none">
-                            <Typewriter
-                                words={[
-                                    "Search by location...",
-                                    "Search by area...",
-                                    "Search by keywords...",
-                                ]}
-                                loop
-                                cursor
-                                cursorStyle="_"
-                                typeSpeed={60}
-                                deleteSpeed={40}
-                                delaySpeed={2000}
-                            />
-                        </div>
-                    )}
+                    <FilterField label="Upazila">
+                        <LocationSelect
+                            value={selectedUpazila}
+                            onChange={(e) => setSelectedUpazila(e.target.value)}
+                            options={filteredUpazilas}
+                            placeholder="Any Upazila"
+                            disabled={!selectedDistrict}
+                        />
+                    </FilterField>
+
+                    <FilterField label="Listing Type">
+                        <SelectWithIcon
+                            value={listingType}
+                            onChange={(e) => setListingType(e.target.value)}
+                        >
+                            <option value="all">All</option>
+                            <option value="sale">For Sale</option>
+                            <option value="rent">For Rent</option>
+                        </SelectWithIcon>
+                    </FilterField>
+
+                    <FilterField label="Property Type">
+                        <SelectWithIcon
+                            value={propertyType}
+                            onChange={(e) => setPropertyType(e.target.value)}
+                        >
+                            <option value="all">All Types</option>
+                            <option value="flat">Residential Apartment/Flat</option>
+                            <option value="building">Building</option>
+                        </SelectWithIcon>
+                    </FilterField>
                 </div>
 
-                {/* Button */}
-                <button 
-                    onClick={handleSearch}
-                    className="w-full md:w-auto flex items-center justify-center gap-2 px-10 py-4 lg:py-5 rounded-md text-white font-bold bg-gradient-to-r from-orange-500 to-yellow-500 hover:brightness-110 hover:shadow-lg transition-all active:scale-95 shadow-orange-200"
-                >
-                    <span className="text-sm lg:text-base">Search Properties</span>
-                    <ArrowRight size={20} />
-                </button>
+                {/* Row 2: Price, Area & Search Button */}
+                <div className="grid grid-cols-5 gap-4">
+                    <FilterField label="Min Price (?)">
+                        <input
+                            type="number"
+                            placeholder="Min"
+                            value={minPrice}
+                            onChange={(e) => setMinPrice(e.target.value)}
+                            className={inputStyle}
+                        />
+                    </FilterField>
+
+                    <FilterField label="Max Price (?)">
+                        <input
+                            type="number"
+                            placeholder="Max"
+                            value={maxPrice}
+                            onChange={(e) => setMaxPrice(e.target.value)}
+                            className={inputStyle}
+                        />
+                    </FilterField>
+
+                    <FilterField label="Min Area (SqFt)">
+                        <input
+                            type="number"
+                            placeholder="Min"
+                            value={minArea}
+                            onChange={(e) => setMinArea(e.target.value)}
+                            className={inputStyle}
+                        />
+                    </FilterField>
+
+                    <FilterField label="Max Area (SqFt)">
+                        <input
+                            type="number"
+                            placeholder="Max"
+                            value={maxArea}
+                            onChange={(e) => setMaxArea(e.target.value)}
+                            className={inputStyle}
+                        />
+                    </FilterField>
+
+                    <div className="flex items-end">
+                        <button
+                            onClick={handleSearch}
+                            className="w-full py-3 rounded-md text-white font-bold bg-gradient-to-r from-orange-500 to-yellow-500 hover:brightness-110 hover:shadow-lg transition-all active:scale-95 shadow-orange-200 flex items-center justify-center gap-2"
+                        >
+                            <span>Search</span>
+                            <ArrowRight size={18} />
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            {/* Explore Link */}
-            <div className="mt-6 flex justify-center">
-                <a
-                    href="/properties"
-                    className="group flex items-center gap-2 text-gray-500 hover:text-orange-600 font-semibold transition-all duration-300 cursor-pointer"
+            {/* Mobile/Tablet Layout */}
+            <div className="lg:hidden space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FilterField label="Division">
+                        <LocationSelect
+                            value={selectedDivision}
+                            onChange={(e) => setSelectedDivision(e.target.value)}
+                            options={divisions}
+                            placeholder="Any Division"
+                            hasMapIcon={true}
+                        />
+                    </FilterField>
+
+                    <FilterField label="District">
+                        <LocationSelect
+                            value={selectedDistrict}
+                            onChange={(e) => setSelectedDistrict(e.target.value)}
+                            options={filteredDistricts}
+                            placeholder="Any District"
+                            disabled={!selectedDivision}
+                        />
+                    </FilterField>
+
+                    <FilterField label="Upazila">
+                        <LocationSelect
+                            value={selectedUpazila}
+                            onChange={(e) => setSelectedUpazila(e.target.value)}
+                            options={filteredUpazilas}
+                            placeholder="Any Upazila"
+                            disabled={!selectedDistrict}
+                        />
+                    </FilterField>
+
+                    <FilterField label="Listing Type">
+                        <SelectWithIcon
+                            value={listingType}
+                            onChange={(e) => setListingType(e.target.value)}
+                        >
+                            <option value="all">All</option>
+                            <option value="sale">For Sale</option>
+                            <option value="rent">For Rent</option>
+                        </SelectWithIcon>
+                    </FilterField>
+
+                    <FilterField label="Property Type">
+                        <SelectWithIcon
+                            value={propertyType}
+                            onChange={(e) => setPropertyType(e.target.value)}
+                        >
+                            <option value="all">All Types</option>
+                            <option value="flat">Residential Apartment/Flat</option>
+                            <option value="building">Building</option>
+                        </SelectWithIcon>
+                    </FilterField>
+
+                    <FilterField label="Min Price (?)">
+                        <input
+                            type="number"
+                            placeholder="Min Price"
+                            value={minPrice}
+                            onChange={(e) => setMinPrice(e.target.value)}
+                            className={inputStyle}
+                        />
+                    </FilterField>
+
+                    <FilterField label="Max Price (?)">
+                        <input
+                            type="number"
+                            placeholder="Max Price"
+                            value={maxPrice}
+                            onChange={(e) => setMaxPrice(e.target.value)}
+                            className={inputStyle}
+                        />
+                    </FilterField>
+
+                    <FilterField label="Min Area (SqFt)">
+                        <input
+                            type="number"
+                            placeholder="Min Area"
+                            value={minArea}
+                            onChange={(e) => setMinArea(e.target.value)}
+                            className={inputStyle}
+                        />
+                    </FilterField>
+
+                    <FilterField label="Max Area (SqFt)">
+                        <input
+                            type="number"
+                            placeholder="Max Area"
+                            value={maxArea}
+                            onChange={(e) => setMaxArea(e.target.value)}
+                            className={inputStyle}
+                        />
+                    </FilterField>
+                </div>
+
+                <button
+                    onClick={handleSearch}
+                    className="w-full py-4 rounded-md text-white font-bold bg-gradient-to-r from-orange-500 to-yellow-500 hover:brightness-110 hover:shadow-lg transition-all active:scale-95 shadow-orange-200 flex items-center justify-center gap-2"
                 >
-                    <span className="text-xs md:text-sm lg:text-base">Explore All Properties</span>
-                    <ArrowRight
-                        size={18}
-                        className="group-hover:translate-x-1 transition-transform"
-                    />
-                </a>
+                    <span>Search Properties</span>
+                    <ArrowRight size={20} />
+                </button>
             </div>
         </div>
     );
