@@ -109,7 +109,8 @@ const GhorAI = () => {
             {!isOpen && (
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4 rounded-full shadow-2xl hover:shadow-orange-300 hover:scale-110 transition-all duration-300 group"
+                    className="fixed bottom-6 right-6 z-[9999] bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4 rounded-full shadow-2xl hover:shadow-orange-300 hover:scale-110 transition-all duration-300 group"
+                    style={{ zIndex: 9999 }}
                     aria-label="Open Ghor AI Chat"
                 >
                     <MessageCircle size={28} className="group-hover:rotate-12 transition-transform" />
@@ -119,7 +120,7 @@ const GhorAI = () => {
 
             {/* Chat Window */}
             {isOpen && (
-                <div className="fixed bottom-6 right-6 z-50 w-96 h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 animate-in slide-in-from-bottom-5 duration-300">
+                <div className="fixed bottom-6 right-6 z-[9999] w-96 h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 animate-in slide-in-from-bottom-5 duration-300" style={{ zIndex: 9999 }}>
                     {/* Header */}
                     <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4 flex items-center justify-between">
                         <div className="flex items-center gap-3">
