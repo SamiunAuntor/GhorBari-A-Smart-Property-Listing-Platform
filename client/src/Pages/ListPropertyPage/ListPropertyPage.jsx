@@ -5,7 +5,7 @@ import MyPropertyCard from './MyPropertyCard';
 import MyRequestedProperties from './MyRequestedProperties';
 import useAuth from '../../Hooks/useAuth';
 import useAxios from '../../Hooks/useAxios';
-import { PlusCircle, Building2, Activity, Users, Star, Loader2, FileText, Clock, Home, FileText as FileTextIcon } from 'lucide-react';
+import { PlusCircle, Building2, Activity, Loader2, FileText, Handshake } from 'lucide-react';
 
 const ListProperty = () => {
     const { user } = useAuth();
@@ -50,30 +50,42 @@ const ListProperty = () => {
     });
 
 
+    const ownerSuccessfulDeals = properties?.filter(
+        (property) => property?.status === 'sold' || property?.status === 'rented'
+    ).length || 0;
+
+    const seekerSuccessfulDeals = applications?.filter(
+        (application) => application?.status === 'completed'
+    ).length || 0;
+
     const stats = [
         {
             label: "Total Properties Listed",
             value: properties?.length || 0,
-            icon: <Building2 className="text-orange-500" />,
-            bg: "bg-orange-50"
+            icon: Building2,
+            iconClass: "text-orange-600",
+            iconBg: "bg-orange-50"
         },
         {
             label: "Active Listings",
             value: properties?.filter(p => p.status === 'active').length || 0,
-            icon: <Activity className="text-yellow-600" />,
-            bg: "bg-yellow-50"
+            icon: Activity,
+            iconClass: "text-emerald-600",
+            iconBg: "bg-emerald-50"
         },
         {
-            label: "Pending Properties",
-            value: properties?.filter(p => p.status === 'pending').length || 0,
-            icon: <Clock className="text-blue-600" />,
-            bg: "bg-blue-50"
+            label: "Total Successful Deals",
+            value: ownerSuccessfulDeals + seekerSuccessfulDeals,
+            icon: Handshake,
+            iconClass: "text-sky-600",
+            iconBg: "bg-sky-50"
         },
         {
             label: "My Applications",
             value: applications?.length || 0,
-            icon: <FileText className="text-orange-600" />,
-            bg: "bg-orange-100/50"
+            icon: FileText,
+            iconClass: "text-amber-600",
+            iconBg: "bg-amber-50"
         },
     ];
 
@@ -98,26 +110,27 @@ const ListProperty = () => {
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
                     {stats.map((stat, i) => (
-                        <div
+                        <article
                             key={i}
-                            className="bg-white p-10 rounded-lg border-2 border-gray-200 flex flex-col items-center justify-center transition-all duration-300 hover:shadow-[0_0_30px_rgba(251,146,60,0.2)] hover:border-orange-300 group cursor-default"
+                            className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md"
                         >
-                            <div className="flex items-center justify-center gap-4 mb-3">
-                                <div className={`${stat.bg} w-14 h-14 rounded-md flex items-center justify-center transition-transform group-hover:scale-110 duration-300`}>
-                                    {React.cloneElement(stat.icon, { size: 26 })}
+                            <div className="mb-5 flex items-center justify-center">
+                                <div className={`h-12 w-12 rounded-xl ${stat.iconBg} ring-1 ring-black/5 flex items-center justify-center`}>
+                                    <stat.icon className={stat.iconClass} size={22} />
                                 </div>
-                                <div className="text-4xl font-black text-gray-900 tracking-tight">
+                            </div>
+
+                            <div className="space-y-1 text-center">
+                                <p className="text-sm font-medium text-gray-500">
+                                    {stat.label}
+                                </p>
+                                <div className="text-4xl font-extrabold leading-none text-gray-900">
                                     {stat.value}
                                 </div>
                             </div>
 
-                            {/* Title */}
-                            <div className="text-center">
-                                <div className="text-[11px] font-extrabold text-gray-400 uppercase tracking-[0.2em]">
-                                    {stat.label}
-                                </div>
-                            </div>
-                        </div>
+                            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-orange-500/0 via-orange-500/60 to-orange-500/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                        </article>
                     ))}
                 </div>
 
