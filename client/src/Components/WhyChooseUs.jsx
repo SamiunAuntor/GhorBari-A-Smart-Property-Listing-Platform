@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Zap, Headphones, BarChart3 } from 'lucide-react';
+import { ShieldCheck, Zap, Headphones, BarChart3, MessageSquare, Handshake, Wallet, Bell } from 'lucide-react';
 
 const WhyChooseUs = () => {
     const features = [
@@ -7,25 +7,49 @@ const WhyChooseUs = () => {
             icon: ShieldCheck,
             title: "NID Verified Security",
             description:
-                "Every property owner undergoes rigorous NID verification ensuring complete safety and authenticity for your peace of mind.",
+                "Owner identity is verified through NID checks, helping reduce fake listings and making every interaction more trustworthy.",
         },
         {
             icon: Zap,
-            title: "AI Smart Pricing",
+            title: "AI Property Assistant",
             description:
-                "Advanced algorithms analyze market trends to provide transparent and fair pricing recommendations for every prestigious location.",
+                "Built-in Ghor AI helps users discover listings, understand options, and move faster with better decisions.",
         },
         {
             icon: BarChart3,
             title: "Market Insights",
             description:
-                "Gain access to intelligent data analytics and location-based trends to make informed investment decisions.",
+                "Live listing patterns and location-level signals support smarter rent and sale decisions across neighborhoods.",
         },
         {
             icon: Headphones,
-            title: "Premium Support",
+            title: "Email Notifications",
             description:
-                "Dedicated concierge service with expert guidance throughout your property journey, from search to final signing.",
+                "Get notified by email for major actions like new applications, incoming offers, counter-offers, and key deal status changes.",
+        },
+        {
+            icon: MessageSquare,
+            title: "In-App Deal Chat",
+            description:
+                "Seeker and owner can communicate directly in context of an application, keeping negotiation and decisions in one place.",
+        },
+        {
+            icon: Handshake,
+            title: "Structured Negotiation",
+            description:
+                "Offer, counter-offer, acceptance, and deal-in-progress states are tracked with clear transitions to avoid confusion.",
+        },
+        {
+            icon: Wallet,
+            title: "Flexible Deal Types",
+            description:
+                "Supports both rent and sale workflows with role-based actions for seekers and owners throughout the transaction lifecycle.",
+        },
+        {
+            icon: Bell,
+            title: "Status Transparency",
+            description:
+                "Applications and properties show precise status updates like pending, counter, completed, sold, or rented for full visibility.",
         },
     ];
 

@@ -1,10 +1,11 @@
 import React from "react";
+import { Link } from "react-router";
 
 const Footer = () => {
     return (
         <footer className="bg-gray-900 text-gray-300">
             {/* MAIN FOOTER CONTENT */}
-            <div className="max-w-7xl mx-auto px-4 py-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-8">
+            <div className="max-w-7xl mx-auto px-4 py-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
 
                 {/* LEFT — BRAND */}
                 <div className="md:col-span-2">
@@ -23,14 +24,20 @@ const Footer = () => {
                         Discover
                     </h3>
                     <ul className="space-y-2 text-sm">
-                        <li className="hover:text-orange-400 transition cursor-pointer">
-                            Properties
+                        <li>
+                            <Link to="/properties" className="hover:text-orange-400 transition">
+                                Browse Properties
+                            </Link>
                         </li>
-                        <li className="hover:text-orange-400 transition cursor-pointer">
-                            Locations
+                        <li>
+                            <Link to="/list-property" className="hover:text-orange-400 transition">
+                                List Property
+                            </Link>
                         </li>
-                        <li className="hover:text-orange-400 transition cursor-pointer">
-                            New Listings
+                        <li>
+                            <Link to="/compare" className="hover:text-orange-400 transition">
+                                Compare Properties
+                            </Link>
                         </li>
                     </ul>
                 </div>
@@ -41,32 +48,20 @@ const Footer = () => {
                         Company
                     </h3>
                     <ul className="space-y-2 text-sm">
-                        <li className="hover:text-orange-400 transition cursor-pointer">
-                            About
+                        <li>
+                            <Link to="/about" className="hover:text-orange-400 transition">
+                                About
+                            </Link>
                         </li>
-                        <li className="hover:text-orange-400 transition cursor-pointer">
-                            Contact
+                        <li>
+                            <Link to="/privacy-policy" className="hover:text-orange-400 transition">
+                                Privacy Policy
+                            </Link>
                         </li>
-                        <li className="hover:text-orange-400 transition cursor-pointer">
-                            Careers
-                        </li>
-                    </ul>
-                </div>
-
-                {/* LEGAL */}
-                <div>
-                    <h3 className="text-sm font-semibold text-white mb-4">
-                        Legal
-                    </h3>
-                    <ul className="space-y-2 text-sm">
-                        <li className="hover:text-orange-400 transition cursor-pointer">
-                            Privacy
-                        </li>
-                        <li className="hover:text-orange-400 transition cursor-pointer">
-                            Terms
-                        </li>
-                        <li className="hover:text-orange-400 transition cursor-pointer">
-                            Cookies
+                        <li>
+                            <Link to="/trust-safety" className="hover:text-orange-400 transition">
+                                Trust &amp; Safety
+                            </Link>
                         </li>
                     </ul>
                 </div>

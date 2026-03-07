@@ -21,6 +21,9 @@ import AllPropertyListings from "./Pages/AdminDashboard/AllPropertyListings";
 import ChatPage from "./Pages/ChatPage/ChatPage";
 import ComparisonPage from "./Pages/ComparisonPage/ComparisonPage";
 import WishlistPage from "./Pages/WishlistPage/WishlistPage";
+import AboutPage from "./Pages/AboutPage";
+import PrivacyPolicyPage from "./Pages/PrivacyPolicyPage";
+import TrustSafetyPage from "./Pages/TrustSafetyPage";
 
 
 const router = createBrowserRouter([
@@ -80,6 +83,18 @@ const router = createBrowserRouter([
             {
                 path: "/wishlist",
                 element: <PrivateRoute><WishlistPage /></PrivateRoute>
+            },
+            {
+                path: "/about",
+                element: <AboutPage />
+            },
+            {
+                path: "/privacy-policy",
+                element: <PrivacyPolicyPage />
+            },
+            {
+                path: "/trust-safety",
+                element: <TrustSafetyPage />
             }
         ]
     },

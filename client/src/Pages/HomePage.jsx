@@ -4,6 +4,7 @@ import FeaturedProperties from '../Components/FeaturedProperties.jsx';
 import WhyChooseUs from '../Components/WhyChooseUs.jsx';
 import HomePageStats from '../Components/HomePageStats.jsx';
 import BeginYourPropertyJourney from '../Components/BeginYourPropertyJourney.jsx';
+import FAQSection from '../Components/FAQSection.jsx';
 import Loading from '../Components/Loading.jsx';
 
 const HomePage = () => {
@@ -25,10 +26,11 @@ const HomePage = () => {
     return (
         <div className='min-h-screen'>
             <Banner></Banner>
-            <FeaturedProperties></FeaturedProperties>
             <HomePageStats></HomePageStats>
+            <FeaturedProperties></FeaturedProperties>
             <WhyChooseUs></WhyChooseUs>
             <BeginYourPropertyJourney></BeginYourPropertyJourney>
+            <FAQSection></FAQSection>
         </div>
     );
 };
