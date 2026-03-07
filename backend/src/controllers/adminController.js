@@ -1,7 +1,7 @@
 import { getDatabase } from "../config/db.js";
 
 import { ObjectId } from "mongodb";
-import { findByNidNumber } from "../services/nidRegistryService.js";
+import { verifyPendingUserByNid } from "../services/nidVerificationService.js";
 
 const INSIGHT_PERIODS = {
     daily: 14,
@@ -540,59 +540,15 @@ export const verifyUserByNidFromRegistry = async (req, res) => {
 
     try {
 
-        const db = getDatabase();
+        const result = await verifyPendingUserByNid(req.params.id);
 
-        const id = req.params.id;
-
-        if (!ObjectId.isValid(id)) {
-            return res.status(400).send({ message: "Invalid user id" });
+        if (!result.ok) {
+            return res.status(result.status || 400).send({ message: result.message, nidVerified: result.nidVerified });
         }
-
-        const user = await db.collection("users").findOne({ _id: new ObjectId(id) });
-
-        if (!user) {
-            return res.status(404).send({ message: "User not found" });
-        }
-        if (user.nidVerified !== "pending") {
-            return res.status(400).send({ message: "Only pending verification requests can be processed" });
-        }
-
-        if (!user.nidNumber || typeof user.nidNumber !== "string" || !user.nidNumber.trim()) {
-            return res.status(400).send({ message: "User has not submitted a valid NID number" });
-        }
-
-        const registryRecord = await findByNidNumber(user.nidNumber);
-
-        if (!registryRecord) {
-            await db.collection("users").updateOne(
-                { _id: new ObjectId(id) },
-                {
-                    $set: {
-                        nidVerified: "rejected",
-                        nidVerifiedAt: null
-                    }
-                }
-            );
-
-            return res.status(200).send({
-                matched: false,
-                nidVerified: "rejected"
-            });
-        }
-
-        await db.collection("users").updateOne(
-            { _id: new ObjectId(id) },
-            {
-                $set: {
-                    nidVerified: "verified",
-                    nidVerifiedAt: new Date()
-                }
-            }
-        );
 
         res.send({
-            matched: true,
-            nidVerified: "verified"
+            matched: result.matched,
+            nidVerified: result.nidVerified
         });
 
     } catch (error) {

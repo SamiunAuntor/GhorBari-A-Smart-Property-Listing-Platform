@@ -6,6 +6,7 @@ import { initializeSocket } from "./src/config/socket.js";
 
 import { setupSocketEvents } from "./src/events/chatEvents.js";
 import { startEmailJobCron } from "./src/jobs/emailJobCron.js";
+import { startNidVerificationCron } from "./src/jobs/nidVerificationCron.js";
 
 import http from "http";
 
@@ -28,6 +29,10 @@ async function startServer() {
 
         if (process.env.ENABLE_EMAIL_JOB_CRON !== "false") {
             startEmailJobCron();
+        }
+
+        if (process.env.ENABLE_NID_VERIFICATION_CRON !== "false") {
+            startNidVerificationCron();
         }
 
         httpServer.listen(PORT, () => {
