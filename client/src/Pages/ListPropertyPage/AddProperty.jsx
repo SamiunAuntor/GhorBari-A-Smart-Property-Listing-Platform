@@ -50,6 +50,8 @@ const AddProperty = () => {
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+    const [isEstimatingPrice, setIsEstimatingPrice] = useState(false);
+    const [priceEstimate, setPriceEstimate] = useState(null);
     const lastUpdateRef = useRef({ division: null, district: null, upazila: null });
     const axios = useAxios();
 
@@ -111,6 +113,10 @@ const AddProperty = () => {
         }
     }, [watchUpazila, upazilas, thanas]);
 
+    useEffect(() => {
+        setPriceEstimate(null);
+    }, [listingType, propertyType, watchDiv, watchDist, watchUpazila, watchAreaSqFt, watchRoomCount, watchBathrooms, watchFloorCount, watchTotalUnits, watchAmenities]);
+
     const handleFilesChange = (e) => {
         const files = Array.from(e.target.files);
         if (selectedFiles.length + files.length > 10) {
@@ -146,6 +152,77 @@ const AddProperty = () => {
         }
 
         return false;
+    };
+
+    const canEstimatePrice = () => {
+        const requiredValues = [
+            listingType,
+            propertyType,
+            watchDiv,
+            watchDist,
+            watchUpazila,
+            watch("address")
+        ];
+
+        if (requiredValues.some((value) => value === undefined || value === null || String(value).trim() === "")) {
+            return false;
+        }
+
+        if (Number(watchAreaSqFt) <= 0) {
+            return false;
+        }
+
+        if (propertyType === "flat") {
+            return Number(watchRoomCount) >= 1 && Number(watchBathrooms) >= 1;
+        }
+
+        if (propertyType === "building") {
+            return Number(watchFloorCount) >= 1 && Number(watchTotalUnits) >= 1;
+        }
+
+        return false;
+    };
+
+    const handleEstimatePrice = async () => {
+        if (!canEstimatePrice()) {
+            showToast("Fill the core property details first", "error");
+            return;
+        }
+
+        setIsEstimatingPrice(true);
+
+        try {
+            const token = await user?.getIdToken();
+            const payload = {
+                listingType,
+                propertyType,
+                areaSqFt: Number(watchAreaSqFt),
+                roomCount: propertyType === "flat" ? Number(watchRoomCount) : undefined,
+                bathrooms: propertyType === "flat" ? Number(watchBathrooms) : undefined,
+                floorCount: propertyType === "building" ? Number(watchFloorCount) : undefined,
+                totalUnits: propertyType === "building" ? Number(watchTotalUnits) : undefined,
+                divisionName: getLabelById(divisions, watchDiv),
+                districtName: getLabelById(districts, watchDist),
+                upazilaName: getLabelById(upazilas, watchUpazila) || getLabelById(thanas, watchUpazila),
+                address: watch("address"),
+                amenities: Array.isArray(watchAmenities) ? watchAmenities : watchAmenities ? [watchAmenities] : []
+            };
+
+            const { data } = await axios.post("/api/ai/estimate-property-price", payload, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (!data?.success || !data?.estimate) {
+                throw new Error(data?.error || "Failed to estimate price");
+            }
+
+            setPriceEstimate(data.estimate);
+            showToast("Price estimate generated", "success");
+        } catch (error) {
+            showToast(error?.response?.data?.error || "Could not estimate price right now", "error");
+        } finally {
+            setIsEstimatingPrice(false);
+        }
     };
 
     const handleGenerateDescription = async () => {
@@ -236,6 +313,7 @@ const AddProperty = () => {
             showToast("Property listed successfully!", "success");
             reset();
             setSelectedFiles([]);
+            setPriceEstimate(null);
             setMapView({ center: [23.6850, 90.3563], zoom: 7 });
             lastUpdateRef.current = { division: null, district: null, upazila: null };
 
@@ -367,6 +445,54 @@ const AddProperty = () => {
                                     </label>
                                     <input type="number" min="0" {...register("price", { required: "Price is required", min: { value: 0, message: "Cannot be negative" } })} className="w-full bg-transparent border-none text-3xl font-black text-gray-900 outline-none placeholder:text-orange-200" placeholder="000,000" />
                                     <ErrorMsg name="price" />
+                                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={handleEstimatePrice}
+                                            disabled={isSubmitting || isEstimatingPrice || !canEstimatePrice()}
+                                            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-white text-slate-700 border border-orange-200 font-bold text-xs uppercase tracking-wider hover:border-orange-300 hover:text-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {isEstimatingPrice ? <Loader2 size={14} className="animate-spin" /> : <Info size={14} />}
+                                            {isEstimatingPrice ? "Estimating..." : "Estimate Price"}
+                                        </button>
+                                        <span className="text-[10px] font-bold text-orange-700/80 uppercase tracking-wider">
+                                            AI helper based on the filled property details
+                                        </span>
+                                    </div>
+                                    {priceEstimate && (
+                                        <div className="mt-4 rounded-md bg-white/80 border border-orange-200 p-4 space-y-3">
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div>
+                                                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-600 mb-1">Estimated Price</p>
+                                                    <p className="text-2xl font-black text-slate-900">৳{Number(priceEstimate.estimatedPrice || 0).toLocaleString()}</p>
+                                                    <p className="text-[11px] font-semibold text-slate-500 mt-1">
+                                                        Range: ৳{Number(priceEstimate.minPrice || 0).toLocaleString()} - ৳{Number(priceEstimate.maxPrice || 0).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 mb-1">Confidence</p>
+                                                    <p className="text-sm font-bold text-slate-700 capitalize">{priceEstimate.confidence || "medium"}</p>
+                                                </div>
+                                            </div>
+                                            {Array.isArray(priceEstimate.reasoning) && priceEstimate.reasoning.length > 0 && (
+                                                <div className="space-y-1.5">
+                                                    {priceEstimate.reasoning.slice(0, 3).map((reason, index) => (
+                                                        <p key={index} className="text-[11px] font-semibold text-slate-600 flex items-start gap-2">
+                                                            <CheckCircle size={12} className="text-orange-500 shrink-0 mt-0.5" />
+                                                            <span>{reason}</span>
+                                                        </p>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => setValue("price", Number(priceEstimate.estimatedPrice || 0), { shouldDirty: true, shouldValidate: true })}
+                                                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-orange-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-orange-700 transition-all"
+                                            >
+                                                Use This Price
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     {propertyType === "flat" ? (

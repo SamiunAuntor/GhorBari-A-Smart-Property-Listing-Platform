@@ -145,6 +145,30 @@ function validatePropertyForAppraisal(property = {}) {
     return true;
 }
 
+function validatePropertyForPriceEstimate(property = {}) {
+    if (!compactText(property.listingType) || !compactText(property.propertyType)) {
+        return false;
+    }
+
+    if (!safeNumber(property.areaSqFt)) {
+        return false;
+    }
+
+    if (!property.address || !compactText(property.address.street)) {
+        return false;
+    }
+
+    if (property.propertyType === "flat") {
+        return safeNumber(property.roomCount) >= 1 && safeNumber(property.bathrooms) >= 1;
+    }
+
+    if (property.propertyType === "building") {
+        return safeNumber(property.floorCount) >= 1 && safeNumber(property.totalUnits) >= 1;
+    }
+
+    return true;
+}
+
 export async function generatePropertyAppraisal(property = {}) {
     if (!validatePropertyForAppraisal(property)) {
         return null;
@@ -206,4 +230,72 @@ ${buildAppraisalFacts(property)}`;
     }
 
     return normalized;
+}
+
+export async function generatePropertyPriceEstimate(property = {}) {
+    if (!validatePropertyForPriceEstimate(property)) {
+        return null;
+    }
+
+    const systemPrompt = "You are a real-estate valuation assistant for a Bangladesh property marketplace. Estimate fair pricing only in Bangladeshi Taka (BDT). Return strict JSON only.";
+    const userPrompt = `Estimate a fair asking price for this property in BDT.
+
+Rules:
+- Return valid JSON only.
+- Do not include markdown or code fences.
+- All prices must be numeric BDT values without commas or currency symbols.
+- estimatedPrice, minPrice, and maxPrice must be monthly BDT for rent listings and total BDT for sale listings.
+- confidence must be one of: low, medium, high.
+- reasoning must be an array of 2 to 4 short strings.
+- Base your estimate on the provided facts only.
+
+Return this exact JSON shape:
+{
+  "estimatedPrice": 0,
+  "minPrice": 0,
+  "maxPrice": 0,
+  "confidence": "medium",
+  "reasoning": []
+}
+
+Property facts:
+${buildAppraisalFacts(property)}`;
+
+    const rawResponse = await generateGroqText({
+        systemPrompt,
+        userPrompt,
+        temperature: 0.2,
+        maxTokens: 220,
+        topP: 0.9
+    });
+
+    let parsed;
+    try {
+        parsed = JSON.parse(extractJsonBlock(rawResponse));
+    } catch (error) {
+        const parseError = new Error("AI price estimate returned invalid JSON");
+        parseError.details = error.message;
+        throw parseError;
+    }
+
+    const estimatedPrice = Math.max(0, Math.round(safeNumber(parsed?.estimatedPrice) || 0));
+    const minPrice = Math.max(0, Math.round(safeNumber(parsed?.minPrice) || 0));
+    const maxPrice = Math.max(0, Math.round(safeNumber(parsed?.maxPrice) || 0));
+    const fallbackBase = estimatedPrice || minPrice || maxPrice || 0;
+    const normalizedMin = minPrice || Math.max(0, Math.round(fallbackBase * 0.95));
+    const normalizedMax = maxPrice || Math.max(normalizedMin, Math.round(fallbackBase * 1.05));
+
+    if (!fallbackBase) {
+        throw new Error("AI price estimate returned incomplete pricing data");
+    }
+
+    return {
+        estimatedPrice: estimatedPrice || fallbackBase,
+        minPrice: Math.min(normalizedMin, normalizedMax),
+        maxPrice: Math.max(normalizedMin, normalizedMax),
+        confidence: normalizeConfidence(parsed?.confidence),
+        reasoning: normalizeReasoning(parsed?.reasoning),
+        model: APPRAISAL_MODEL,
+        currency: "BDT"
+    };
 }

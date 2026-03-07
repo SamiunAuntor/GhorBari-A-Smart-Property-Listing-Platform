@@ -1,5 +1,6 @@
 import { buildPropertyDescriptionPrompt, validatePropertyDescriptionPayload } from "../services/propertyDescriptionPromptService.js";
 import { generateGroqText, getGroqModel } from "../services/groqService.js";
+import { generatePropertyPriceEstimate } from "../services/propertyAppraisalService.js";
 
 const GROQ_MODEL = getGroqModel();
 
@@ -120,5 +121,43 @@ export const generatePropertyDescription = async (req, res) => {
             error: "An unexpected error occurred. Please try again later.",
             details: error.message
         });
+    }
+};
+
+export const estimatePropertyPrice = async (req, res) => {
+    try {
+        const propertyPayload = {
+            listingType: req.body?.listingType,
+            propertyType: req.body?.propertyType,
+            areaSqFt: req.body?.areaSqFt,
+            roomCount: req.body?.roomCount,
+            bathrooms: req.body?.bathrooms,
+            floorCount: req.body?.floorCount,
+            totalUnits: req.body?.totalUnits,
+            amenities: req.body?.amenities,
+            address: {
+                division_id: req.body?.divisionName,
+                district_id: req.body?.districtName,
+                upazila_id: req.body?.upazilaName,
+                street: req.body?.address
+            }
+        };
+
+        const estimate = await generatePropertyPriceEstimate(propertyPayload);
+
+        if (!estimate) {
+            return res.status(400).json({
+                success: false,
+                error: "Fill the main property details first to estimate price."
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            estimate,
+            model: GROQ_MODEL
+        });
+    } catch (error) {
+        return handleAiControllerError(res, error, "Price estimation is temporarily unavailable. Please try again later.");
     }
 };
