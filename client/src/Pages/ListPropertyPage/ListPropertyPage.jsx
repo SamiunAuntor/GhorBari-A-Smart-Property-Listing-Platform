@@ -138,15 +138,15 @@ const ListProperty = () => {
                 <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
                     {activeTab === 'listings' ? (
                         <>
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-2xl font-bold text-gray-800">
+                            <div className="flex items-center justify-between gap-4 mb-6">
+                                <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
                                     My Listings ({properties.length || 0})
                                 </h2>
                                 <div className="bg-white rounded-lg p-2 border border-gray-200 shadow-sm">
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => setActiveTab('listings')}
-                                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                                            className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
                                                 activeTab === 'listings'
                                                     ? 'bg-orange-500 text-white shadow-inner'
                                                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -156,7 +156,7 @@ const ListProperty = () => {
                                         </button>
                                         <button
                                             onClick={() => setActiveTab('requests')}
-                                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                                            className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
                                                 activeTab === 'requests'
                                                     ? 'bg-orange-500 text-white shadow-inner'
                                                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -173,30 +173,32 @@ const ListProperty = () => {
                                     <p className="font-bold text-gray-400 uppercase tracking-widest text-xs">Loading Listings...</p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 gap-6">
-                                    {properties.length > 0 ? (
-                                        properties.map(property => (
-                                            <MyPropertyCard key={property._id} property={property} />
-                                        ))
-                                    ) : (
-                                        <div className="col-span-full text-center py-20 border-2 border-dashed border-gray-100 rounded-lg">
-                                            <p className="text-gray-400 font-medium">No properties found. Start by adding one!</p>
-                                        </div>
-                                    )}
+                                <div className="overflow-x-auto sm:overflow-visible pb-2">
+                                    <div className="grid grid-cols-1 gap-6 min-w-[680px] sm:min-w-0">
+                                        {properties.length > 0 ? (
+                                            properties.map(property => (
+                                                <MyPropertyCard key={property._id} property={property} />
+                                            ))
+                                        ) : (
+                                            <div className="col-span-full text-center py-20 border-2 border-dashed border-gray-100 rounded-lg">
+                                                <p className="text-gray-400 font-medium">No properties found. Start by adding one!</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </>
                     ) : (
                         <>
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-2xl font-bold text-gray-800">
+                            <div className="flex items-center justify-between gap-4 mb-6">
+                                <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
                                     My Requested Properties ({applications.length || 0})
                                 </h2>
                                 <div className="bg-white rounded-lg p-2 border border-gray-200 shadow-sm">
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => setActiveTab('listings')}
-                                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                                            className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
                                                 activeTab === 'listings'
                                                     ? 'bg-orange-500 text-white shadow-inner'
                                                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -206,7 +208,7 @@ const ListProperty = () => {
                                         </button>
                                         <button
                                             onClick={() => setActiveTab('requests')}
-                                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                                            className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
                                                 activeTab === 'requests'
                                                     ? 'bg-orange-500 text-white shadow-inner'
                                                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'

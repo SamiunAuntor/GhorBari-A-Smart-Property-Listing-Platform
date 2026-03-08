@@ -20,7 +20,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <AuthProvider>
         <ComparisonProvider>
           <WishlistProvider>
-            <div className="max-w-[1440px]">
+            <div className="">
               <RouterProvider router={router} />
             </div>
             <Toaster position="top-right" />

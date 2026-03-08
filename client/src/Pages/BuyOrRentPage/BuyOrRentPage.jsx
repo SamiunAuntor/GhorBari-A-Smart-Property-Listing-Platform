@@ -458,7 +458,7 @@ const BuyOrRentPage = () => {
                             {totalItems} Properties Found
                         </h1>
                     </div>
-                    <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
+                    <div className="flex w-fit self-start lg:self-auto bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
                         <button onClick={() => setViewMode("grid")} className={`p-2 rounded-md transition-all ${viewMode === "grid" ? "bg-orange-500 text-white shadow-inner" : "text-gray-400 hover:text-gray-600"}`}>
                             <LayoutGrid size={20} />
                         </button>
