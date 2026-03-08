@@ -106,12 +106,12 @@ export const createApplication = async (req, res) => {
         }
 
         // Check if user already has an active/blocking application for this property
-        // Blocked statuses: pending, counter, deal-in-progress, completed
-        // Allowed to reapply: rejected, withdrawn, cancelled
+        // Blocked statuses: pending, counter, deal-in-progress
+        // Allowed to reapply: completed, rejected, withdrawn, cancelled
         const existingApplication = await db.collection("applications").findOne({
             propertyId: new ObjectId(data.propertyId),
             "seeker.email": req.user.email,
-            status: { $in: ["pending", "counter", "deal-in-progress", "completed"] }
+            status: { $in: ["pending", "counter", "deal-in-progress"] }
         });
 
         if (existingApplication) {

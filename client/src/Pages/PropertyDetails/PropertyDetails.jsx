@@ -85,12 +85,12 @@ const PropertyDetails = ({ isAdminPreview = false }) => {
     });
 
     // Check if user has an active/blocking application for this property
-    // Blocked statuses: pending, counter, deal-in-progress, completed
-    // Allowed to reapply: rejected, withdrawn, cancelled
+    // Blocked statuses: pending, counter, deal-in-progress
+    // Allowed to reapply: completed, rejected, withdrawn, cancelled
     const hasApplied = userApplications.some(app => {
         const matchesProperty = app.propertyId?.toString() === property?._id?.toString() || 
                                app.property?._id?.toString() === property?._id?.toString();
-        const blockingStatuses = ["pending", "counter", "deal-in-progress", "completed"];
+        const blockingStatuses = ["pending", "counter", "deal-in-progress"];
         return matchesProperty && blockingStatuses.includes(app.status);
     });
 
