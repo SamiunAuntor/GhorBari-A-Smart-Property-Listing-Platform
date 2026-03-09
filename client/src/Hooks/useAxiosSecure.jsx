@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 const axiosSecure = axios.create({
     // prod url : https://ghorbari-a-smart-property-listing.onrender.com/
-    baseURL: import.meta.env.VITE_API_URL || "https://localhost:5000", // will need to replaace this one when we deploy the project
+    baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000", // local backend runs without SSL
 });
 
 const useAxiosSecure = () => {

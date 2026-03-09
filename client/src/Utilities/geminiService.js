@@ -2,6 +2,21 @@ import axios from "axios";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+function normalizeAiResponseText(text) {
+    if (!text || typeof text !== "string") {
+        return "";
+    }
+
+    return text
+        .replace(/^#{1,6}\s+/gm, "")
+        .replace(/\*\*(.*?)\*\*/g, "$1")
+        .replace(/\*(.*?)\*/g, "$1")
+        .replace(/`([^`]+)`/g, "$1")
+        .replace(/^\s*[-*]\s+/gm, "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+}
+
 /**
  * Send a message to the Ghor AI backend for processing with Gemini API
  * @param {string} message - The user's message
@@ -25,7 +40,7 @@ export const sendMessageToGemini = async (message, conversationHistory = [], axi
 
                 if (response.data?.success && response.data?.response) {
                     console.log("✅ AI response received successfully");
-                    return response.data.response;
+                    return normalizeAiResponseText(response.data.response);
                 }
 
                 throw new Error(response.data?.error || "Invalid response from AI service");
@@ -73,7 +88,7 @@ export const sendMessageToGemini = async (message, conversationHistory = [], axi
             if (response.ok) {
                 const data = await response.json();
                 if (data.success && data.response) {
-                    return data.response;
+                    return normalizeAiResponseText(data.response);
                 }
                 throw new Error(data.error || "Invalid response from AI service");
             }
