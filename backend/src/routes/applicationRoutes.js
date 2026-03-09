@@ -30,7 +30,7 @@ router.patch("/application/:id/accept-counter", verifyToken, applicationControll
 // Send a standalone application message (owner or seeker)
 router.post("/application/:id/message", verifyToken, applicationController.sendApplicationMessage);
 
-// Complete or cancel deal (owner/admin actions)
+// Complete or cancel deal (owner or seeker actions)
 router.patch("/property/:propertyId/deal", verifyToken, applicationController.updateDealStatus);
 
 export default router;

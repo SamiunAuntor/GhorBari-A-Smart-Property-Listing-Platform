@@ -1051,7 +1051,7 @@ export const acceptCounterOffer = async (req, res) => {
     }
 };
 
-// Complete or cancel deal (owner/admin actions)
+// Complete or cancel deal (owner or seeker actions)
 export const updateDealStatus = async (req, res) => {
     try {
         const db = getDatabase();
@@ -1101,14 +1101,13 @@ export const updateDealStatus = async (req, res) => {
             return res.status(404).send({ message: "Application not found" });
         }
 
-        // Verify ownership, application ownership, or admin
+        // Verify ownership or application ownership
         const isOwner = property.owner.email === req.user.email;
         const isSeeker = application.seeker.email === req.user.email;
-        const isAdmin = req.user.role === "admin";
 
-        if (!isOwner && !isSeeker && !isAdmin) {
+        if (!isOwner && !isSeeker) {
             return res.status(403).send({ 
-                message: "You don't have permission to update this deal. Only the property owner, applicant, or admin can update deals." 
+                message: "You don't have permission to update this deal. Only the property owner or applicant can update deals."
             });
         }
 
@@ -1138,7 +1137,7 @@ export const updateDealStatus = async (req, res) => {
             );
 
             // NOW reject all other pending/counter/deal-in-progress applications since deal is finalized
-            const actorType = isOwner ? "owner" : isSeeker ? "seeker" : "admin";
+            const actorType = isOwner ? "owner" : "seeker";
             await db.collection("applications").updateMany(
                 {
                     propertyId: property._id,
@@ -1229,7 +1228,7 @@ export const updateDealStatus = async (req, res) => {
             );
 
             // Mark application as cancelled with history
-            const actorType = isOwner ? "owner" : isSeeker ? "seeker" : "admin";
+            const actorType = isOwner ? "owner" : "seeker";
             await db.collection("applications").updateOne(
                 { _id: applicationId },
                 {

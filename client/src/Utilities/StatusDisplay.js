@@ -214,7 +214,6 @@ export const getPropertyStatusColorAdmin = (status) => {
         rented: 'bg-blue-50 text-blue-600 border-blue-100',
         sold: 'bg-purple-50 text-purple-600 border-purple-100',
         'deal-in-progress': 'bg-orange-50 text-orange-600 border-orange-100',
-        'deal-cancelled': 'bg-gray-50 text-gray-600 border-gray-100',
         hidden: 'bg-gray-50 text-gray-600 border-gray-100',
         removed: 'bg-gray-50 text-gray-600 border-gray-100'
     };
@@ -230,4 +229,3 @@ export const isActiveApplicationStatus = (status) => {
     const normalizedStatus = status === 'accepted' ? 'deal-in-progress' : status;
     return ['pending', 'counter', 'deal-in-progress'].includes(normalizedStatus);
 };
-

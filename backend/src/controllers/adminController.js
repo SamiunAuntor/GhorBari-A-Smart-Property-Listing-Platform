@@ -173,7 +173,7 @@ export const updatePropertyStatus = async (req, res) => {
 
         const id = req.params.id;
 
-        const { status } = req.body; // status can be: "active", "rejected", "removed", "hidden"
+        const { status } = req.body;
 
         // Get the current property to check its status
         const property = await db.collection("properties").findOne({ _id: new ObjectId(id) });
@@ -224,85 +224,21 @@ export const updatePropertyStatus = async (req, res) => {
             return res.send(result);
         }
 
-        // If status is "deal-cancelled", restore previous status from the property document
-        if (status === "deal-cancelled") {
-            const statusToRestore = property.previousStatus || property.status;
-            const result = await db.collection("properties").updateOne(
-                { _id: new ObjectId(id) },
-                { 
-                    $set: { 
-                        status: statusToRestore,
-                        previousStatus: null, // Clear previous status after restoration
-                        updatedAt: new Date()
-                    } 
-                }
-            );
-            return res.send(result);
-        }
-
-        // Business logic validations
-        // Can't mark as rented if listingType is sale
-        if (status === "rented" && property.listingType === "sale") {
-            return res.status(400).send({ message: "Cannot mark a property for sale as rented" });
-        }
-        
-        // Can't mark as sold if listingType is rent
-        if (status === "sold" && property.listingType === "rent") {
-            return res.status(400).send({ message: "Cannot mark a property for rent as sold" });
-        }
-        
-        // Can't mark as rented if already rented or sold
-        if (status === "rented" && ["rented", "sold"].includes(property.status)) {
-            return res.status(400).send({ message: "Property is already marked as rented or sold" });
-        }
-        
-        // Can't mark as sold if already rented or sold
-        if (status === "sold" && ["rented", "sold"].includes(property.status)) {
-            return res.status(400).send({ message: "Property is already marked as rented or sold" });
-        }
-        
-        // CRITICAL: Admin CANNOT set property to deal-in-progress directly
-        // Only owner/user accepting an application can set deal-in-progress
-        // Admin can only see and manage properties that are already in deal-in-progress
-        if (status === "deal-in-progress") {
-            // Check if property already has an active application (meaning it's already in deal-in-progress)
-            if (!property.active_proposal_id) {
-                return res.status(400).send({ 
-                    message: "Cannot set property to deal-in-progress. Only property owner or applicant accepting an application can set this status." 
-                });
-            }
-            // If it already has active_proposal_id, it means it's already in deal-in-progress
-            // So admin is just confirming/keeping it, which is fine
-        }
-        
-        // Can't mark deal-in-progress if already rented or sold
-        if (status === "deal-in-progress" && ["rented", "sold"].includes(property.status)) {
-            return res.status(400).send({ message: "Cannot mark rented or sold property as deal in progress" });
-        }
-        
-        // Can't mark deal-in-progress if property is rejected (must be approved first)
-        if (status === "deal-in-progress" && property.status === "rejected") {
-            return res.status(400).send({ message: "Cannot mark rejected property as deal in progress. Please approve it first." });
-        }
-
-        // For other status changes
-        let updateData = { 
-            status: status,
-            updatedAt: new Date()
-        };
-        
-        // Store previous status if changing from active or pending to deal-in-progress
-        // Note: This should only happen if property already has active_proposal_id (from admin perspective)
-        if ((property.status === "active" || property.status === "pending") && status === "deal-in-progress") {
-            // Double check: only allow if active_proposal_id exists
-            if (property.active_proposal_id) {
-                updateData.previousStatus = property.status;
-            }
+        const allowedStatuses = ["active", "rejected"];
+        if (!allowedStatuses.includes(status)) {
+            return res.status(400).send({
+                message: `Invalid status. Admin can only set: ${allowedStatuses.join(", ")}`
+            });
         }
 
         const result = await db.collection("properties").updateOne(
             { _id: new ObjectId(id) },
-            { $set: updateData }
+            {
+                $set: {
+                    status,
+                    updatedAt: new Date()
+                }
+            }
         );
 
         res.send(result);
