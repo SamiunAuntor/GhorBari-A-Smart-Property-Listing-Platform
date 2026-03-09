@@ -19,6 +19,112 @@ function normalizeAiChatResponse(text) {
         .trim();
 }
 
+function extractBudgetFromMessage(message) {
+    const normalized = message.toLowerCase().replace(/,/g, "");
+    const budgetMatch = normalized.match(/(?:under|below|max(?:imum)?|budget)\s*(?:bdt|tk|taka)?\s*(\d{4,9})/i)
+        || normalized.match(/(\d{4,9})\s*(?:bdt|tk|taka)/i);
+
+    if (!budgetMatch) {
+        return null;
+    }
+
+    const budget = Number(budgetMatch[1]);
+    return Number.isFinite(budget) && budget > 0 ? budget : null;
+}
+
+function buildPropertyIntentQuery(message) {
+    const normalized = message.toLowerCase();
+    const query = { status: "active" };
+
+    if (/\brent|rental|lease\b/.test(normalized)) {
+        query.listingType = "rent";
+    } else if (/\bbuy|sale|purchase\b/.test(normalized)) {
+        query.listingType = "sale";
+    }
+
+    if (/\bflat|apartment\b/.test(normalized)) {
+        query.propertyType = "flat";
+    } else if (/\bbuilding\b/.test(normalized)) {
+        query.propertyType = "building";
+    }
+
+    const budget = extractBudgetFromMessage(message);
+    if (budget) {
+        query.price = { $lte: budget };
+    }
+
+    return query;
+}
+
+function inferLocationKeyword(message) {
+    const normalized = message.toLowerCase();
+    const stopWords = new Set([
+        "i", "need", "a", "an", "the", "for", "in", "at", "to", "on", "with", "near", "around",
+        "rent", "rental", "lease", "buy", "sale", "purchase", "flat", "apartment", "building", "house",
+        "property", "properties", "bdt", "tk", "taka", "under", "below", "max", "maximum", "budget",
+        "and", "or", "me", "my", "please", "find", "show", "looking"
+    ]);
+
+    const tokens = normalized
+        .replace(/[^a-z\s]/g, " ")
+        .split(/\s+/)
+        .filter((token) => token.length >= 4 && !stopWords.has(token));
+
+    return tokens[0] || null;
+}
+
+async function getPropertyContextForAi(database, message, limit = 6) {
+    const query = buildPropertyIntentQuery(message);
+    const locationKeyword = inferLocationKeyword(message);
+    const appliedFilters = {
+        listingType: query.listingType || null,
+        propertyType: query.propertyType || null,
+        maxPrice: query.price?.$lte || null,
+        locationKeyword
+    };
+
+    if (locationKeyword) {
+        query.$or = [
+            { "address.district_id": { $regex: locationKeyword, $options: "i" } },
+            { "address.upazila_id": { $regex: locationKeyword, $options: "i" } },
+            { "address.street": { $regex: locationKeyword, $options: "i" } },
+            { title: { $regex: locationKeyword, $options: "i" } }
+        ];
+    }
+
+    const properties = await database
+        .collection("properties")
+        .find(query)
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .toArray();
+
+    const compactProperties = properties.map((property) => ({
+        id: property._id?.toString(),
+        title: property.title,
+        listingType: property.listingType,
+        propertyType: property.propertyType,
+        price: property.price,
+        areaSqFt: property.areaSqFt,
+        roomCount: property.roomCount ?? null,
+        bathrooms: property.bathrooms ?? null,
+        floorCount: property.floorCount ?? null,
+        totalUnits: property.totalUnits ?? null,
+        division: property.address?.division_id || null,
+        district: property.address?.district_id || null,
+        upazila: property.address?.upazila_id || null,
+        street: property.address?.street || null,
+        amenities: Array.isArray(property.amenities) ? property.amenities.slice(0, 8) : [],
+        createdAt: property.createdAt || null
+    }));
+
+    return {
+        filters: appliedFilters,
+        total: compactProperties.length,
+        properties: compactProperties
+    };
+}
+
 function handleAiControllerError(res, error, fallbackMessage) {
     const statusCode = error.response?.status || error.statusCode || 500;
     const errorMessage =
@@ -69,15 +175,23 @@ export const sendMessageToAI = async (req, res) => {
             });
         }
 
+        const propertyContext = await getPropertyContextForAi(req.db, message);
+
         const systemPrompt = `You are Ghor AI, a helpful real estate assistant for a property rental and sales platform called "GHOR BARI" (which means "home" in Bengali). You help users find properties, answer questions about real estate, provide advice on renting or buying properties in Bangladesh, and assist with any property-related queries.
 
     Be friendly, professional, and helpful. Keep responses concise and informative.
-    Always respond in plain text. Do not use markdown formatting, headings, bullets, asterisks, or hash symbols.`;
+    Always respond in plain text. Do not use markdown formatting, headings, bullets, asterisks, or hash symbols.
+
+    You have access to a local property database snapshot. When suggesting properties, use only the provided records and do not invent listings.
+    If there are no matching records, say that clearly and ask the user for preferred budget/location/property type.
+    Mention property IDs when relevant so users can identify exact listings.`;
+
+        const userPrompt = `User message: ${message}\n\nProperty data snapshot (JSON):\n${JSON.stringify(propertyContext)}`;
 
         try {
             const aiResponse = await generateGroqText({
                 systemPrompt,
-                userPrompt: message,
+                userPrompt,
                 temperature: 0.7,
                 maxTokens: 512,
                 topP: 0.95
