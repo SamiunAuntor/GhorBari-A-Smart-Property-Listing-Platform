@@ -127,21 +127,34 @@ async function getPropertyContextForAi(database, message, limit = 6) {
 }
 
 function formatLocation(property) {
-    const parts = [property.upazila, property.district, property.division].filter(Boolean);
-    return parts.length ? parts.join(", ") : "Location not specified";
+    if (property.street) {
+        return property.street;
+    }
+
+    const labels = [];
+    if (property.upazila && Number.isNaN(Number(property.upazila))) {
+        labels.push(property.upazila);
+    }
+    if (property.district && Number.isNaN(Number(property.district))) {
+        labels.push(property.district);
+    }
+    if (property.division && Number.isNaN(Number(property.division))) {
+        labels.push(property.division);
+    }
+
+    return labels.length ? labels.join(", ") : "Location details available in listing";
 }
 
 function formatLocalPropertyMatches(properties) {
-    const lines = ["Top matches from GHOR BARI database:"];
+    const lines = ["Here are the best matches from GHOR BARI database:"];
 
     properties.slice(0, 5).forEach((property, index) => {
-        const base = `${index + 1}. ${property.title || "Untitled property"} | ID: ${property.id}`;
+        const base = `${index + 1}. ${property.title || "Untitled property"} (ID: ${property.id})`;
         const details = [
-            `${property.listingType || "n/a"}`,
-            `${property.propertyType || "n/a"}`,
+            `Type: ${property.listingType || "n/a"} ${property.propertyType || "property"}`,
             property.price ? `BDT ${property.price}` : "Price n/a",
             property.areaSqFt ? `${property.areaSqFt} sqft` : null,
-            formatLocation(property)
+            `Location: ${formatLocation(property)}`
         ].filter(Boolean).join(" | ");
 
         lines.push(`${base} | ${details}`);
@@ -281,26 +294,13 @@ export const sendMessageToAI = async (req, res) => {
 
         if (propertyContext.total > 0) {
             const localHeader = strategy === "relaxed"
-                ? "I could not find exact matches, so here are the closest results from your database."
+                ? "I could not find exact matches, but I found close options from your database."
                 : "I found matching properties in your database.";
 
             const localSummary = formatLocalPropertyMatches(propertyContext.properties);
 
-            let aiSupplement = "";
-            try {
-                const localUserPrompt = `User message: ${message}\n\nDatabase matches (JSON):\n${JSON.stringify(propertyContext)}\n\nWrite 2-3 short lines after these matches with practical next-step advice (budget, location, negotiation). Do not repeat the same listings.`;
-                aiSupplement = await generateGroqText({
-                    systemPrompt,
-                    userPrompt: localUserPrompt,
-                    temperature: 0.6,
-                    maxTokens: 180,
-                    topP: 0.95
-                });
-            } catch (adviceError) {
-                console.error("Local advice generation failed:", adviceError.message);
-            }
-
-            const combined = `${localHeader}\n${localSummary}${aiSupplement ? `\n\n${aiSupplement}` : ""}`;
+            const followUp = "Tell me your preferred area, max budget, and bedrooms, and I will narrow this to the best 2 options.";
+            const combined = `${localHeader}\n\n${localSummary}\n\n${followUp}`;
 
             return res.status(200).json({
                 success: true,
