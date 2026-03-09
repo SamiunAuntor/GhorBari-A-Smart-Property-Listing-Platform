@@ -9,6 +9,14 @@ const OwnerCounterOfferModal = ({ isOpen, onClose, application, property, onSucc
     const { user } = useAuth();
     const axios = useAxios();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const applicantOffer = Number(application?.proposedPrice || 0);
+    const listingPrice = Number(property?.price || 0);
+    const previousOwnerCounter = Array.isArray(application?.priceHistory)
+        ? application.priceHistory
+            .filter((entry) => entry?.setBy === 'owner' && Number(entry?.price) > 0)
+            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+            .at(-1)?.price ?? null
+        : null;
     
     const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm({
         defaultValues: {
@@ -32,10 +40,26 @@ const OwnerCounterOfferModal = ({ isOpen, onClose, application, property, onSucc
         try {
             setIsSubmitting(true);
             const token = await user.getIdToken();
+            const counterPrice = Number(data.proposedPrice);
+
+            if (counterPrice <= applicantOffer) {
+                showToast(`Counter offer must be greater than ${applicantOffer.toLocaleString()}`, 'error');
+                return;
+            }
+
+            if (previousOwnerCounter !== null && counterPrice >= Number(previousOwnerCounter)) {
+                showToast(`Counter offer must be less than ${Number(previousOwnerCounter).toLocaleString()}`, 'error');
+                return;
+            }
+
+            if (counterPrice > listingPrice) {
+                showToast(`Counter offer cannot exceed ${listingPrice.toLocaleString()}`, 'error');
+                return;
+            }
             
             await axios.patch(`/application/${application._id}`, {
                 status: 'counter',
-                proposedPrice: Number(data.proposedPrice),
+                proposedPrice: counterPrice,
                 message: data.message || ''
             }, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -113,8 +137,15 @@ const OwnerCounterOfferModal = ({ isOpen, onClose, application, property, onSucc
                                     {...register("proposedPrice", {
                                         required: "Price is required",
                                         min: {
-                                            value: 1,
-                                            message: "Price must be greater than 0"
+                                            value: applicantOffer + Number.EPSILON,
+                                            message: `Counter offer must be greater than ${applicantOffer.toLocaleString()}`
+                                        },
+                                        validate: (value) => {
+                                            const numericValue = Number(value);
+                                            if (previousOwnerCounter !== null && numericValue >= Number(previousOwnerCounter)) {
+                                                return `Counter offer must be less than ${Number(previousOwnerCounter).toLocaleString()}`;
+                                            }
+                                            return numericValue <= listingPrice || `Counter offer cannot exceed ${listingPrice.toLocaleString()}`;
                                         }
                                     })}
                                     className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all text-lg font-semibold"
@@ -122,6 +153,9 @@ const OwnerCounterOfferModal = ({ isOpen, onClose, application, property, onSucc
                                 {errors.proposedPrice && (
                                     <p className="text-red-500 text-xs mt-1">{errors.proposedPrice.message}</p>
                                 )}
+                                <p className="text-xs text-gray-400 mt-2">
+                                    Allowed range: more than {"\u09F3"}{applicantOffer.toLocaleString()} and {previousOwnerCounter !== null ? <>less than {"\u09F3"}{Number(previousOwnerCounter).toLocaleString()}</> : <>up to {"\u09F3"}{listingPrice.toLocaleString()}</>}
+                                </p>
                             </div>
                         </div>
 

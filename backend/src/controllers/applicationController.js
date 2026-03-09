@@ -67,6 +67,44 @@ async function enrichApplicationParticipants(db, application) {
     };
 }
 
+function getLatestPriceByActor(application, actor) {
+    const history = Array.isArray(application?.priceHistory) ? application.priceHistory : [];
+    const matchingEntries = history.filter((entry) => entry?.setBy === actor && Number(entry?.price) > 0);
+    if (matchingEntries.length === 0) {
+        return null;
+    }
+
+    matchingEntries.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    return Number(matchingEntries[matchingEntries.length - 1].price);
+}
+
+function getListingPrice(application) {
+    const price = Number(application?.originalListingPrice ?? application?.propertySnapshot?.price ?? 0);
+    return Number.isFinite(price) ? price : 0;
+}
+
+function getCounterOfferBounds(application) {
+    const listingPrice = getListingPrice(application);
+    const lastSeekerPrice = getLatestPriceByActor(application, "seeker") ?? Number(application?.proposedPrice ?? 0);
+    const lastOwnerPrice = getLatestPriceByActor(application, "owner");
+
+    return {
+        minExclusive: lastSeekerPrice,
+        maxExclusive: lastOwnerPrice ?? null,
+        maxInclusive: lastOwnerPrice === null ? listingPrice : null
+    };
+}
+
+function getRevisionOfferBounds(application) {
+    const lastSeekerPrice = getLatestPriceByActor(application, "seeker");
+    const lastOwnerPrice = getLatestPriceByActor(application, "owner") ?? Number(application?.proposedPrice ?? 0);
+
+    return {
+        minExclusive: lastSeekerPrice ?? 0,
+        maxExclusive: lastOwnerPrice
+    };
+}
+
 // Create a new application/proposal
 export const createApplication = async (req, res) => {
     try {
@@ -123,6 +161,13 @@ export const createApplication = async (req, res) => {
         // Validate proposedPrice
         if (!data.proposedPrice || Number(data.proposedPrice) <= 0) {
             return res.status(400).send({ message: "Valid proposed price is required" });
+        }
+
+        const initialOfferPrice = Number(data.proposedPrice);
+        if (initialOfferPrice > Number(property.price)) {
+            return res.status(400).send({
+                message: `Offer price cannot exceed the listing price of ${Number(property.price).toLocaleString()}`
+            });
         }
 
         // Get complete seeker information from users collection
@@ -193,7 +238,7 @@ export const createApplication = async (req, res) => {
             // Application Details
             status: "pending",
             originalListingPrice: property.price, // Store original price
-            proposedPrice: Number(data.proposedPrice), // Current proposed price
+            proposedPrice: initialOfferPrice, // Current proposed price
             message: data.message || "",
 
             // Embedded Messages Thread (conversation between seeker and owner)
@@ -206,7 +251,7 @@ export const createApplication = async (req, res) => {
                         senderName: seekerName,
                         text: data.message,
                         actionType: "application_submitted",
-                        linkedPrice: Number(data.proposedPrice),
+                        linkedPrice: initialOfferPrice,
                         timestamp: occurredAt
                     }]
                     : [])
@@ -218,7 +263,7 @@ export const createApplication = async (req, res) => {
                     action: "application_submitted",
                     actor: "seeker",
                     actorEmail: req.user.email,
-                    proposedPrice: Number(data.proposedPrice),
+                    proposedPrice: initialOfferPrice,
                     status: "pending",
                     message: data.message || "",
                     timestamp: occurredAt
@@ -228,7 +273,7 @@ export const createApplication = async (req, res) => {
             // Price History (track all price changes)
             priceHistory: [
                 {
-                    price: Number(data.proposedPrice),
+                    price: initialOfferPrice,
                     setBy: "seeker",
                     setByEmail: req.user.email,
                     timestamp: occurredAt,
@@ -453,6 +498,27 @@ export const updateApplicationStatus = async (req, res) => {
             if (!proposedPrice || Number(proposedPrice) <= 0) {
                 return res.status(400).send({ 
                     message: "Valid proposed price is required for counter offers" 
+                });
+            }
+
+            const counterPrice = Number(proposedPrice);
+            const { minExclusive, maxExclusive, maxInclusive } = getCounterOfferBounds(application);
+
+            if (counterPrice <= minExclusive) {
+                return res.status(400).send({
+                    message: `Counter offer must be greater than ${minExclusive.toLocaleString()}`
+                });
+            }
+
+            if (maxExclusive !== null && counterPrice >= maxExclusive) {
+                return res.status(400).send({
+                    message: `Counter offer must be less than ${maxExclusive.toLocaleString()}`
+                });
+            }
+
+            if (maxInclusive !== null && counterPrice > maxInclusive) {
+                return res.status(400).send({
+                    message: `Counter offer cannot exceed ${maxInclusive.toLocaleString()}`
                 });
             }
         }
@@ -792,13 +858,28 @@ export const reviseApplication = async (req, res) => {
             });
         }
 
+        const revisedPrice = Number(proposedPrice);
+        const { minExclusive, maxExclusive } = getRevisionOfferBounds(application);
+
+        if (revisedPrice <= minExclusive) {
+            return res.status(400).send({
+                message: `Revised offer must be greater than ${minExclusive.toLocaleString()}`
+            });
+        }
+
+        if (revisedPrice >= maxExclusive) {
+            return res.status(400).send({
+                message: `Revised offer must be less than ${maxExclusive.toLocaleString()}`
+            });
+        }
+
         const occurredAt = new Date();
         const seekerIdentity = await getProfileIdentity(db, req.user.email, application.seeker || {});
 
         // Prepare update data (same structure as owner's counter)
         const setData = {
             status: "pending",
-            proposedPrice: Number(proposedPrice),
+            proposedPrice: revisedPrice,
             updatedAt: occurredAt,
             lastActionAt: occurredAt,
             lastActionBy: "seeker",
@@ -813,7 +894,7 @@ export const reviseApplication = async (req, res) => {
         // Prepare push data for history tracking (same structure as owner's counter)
         const pushData = {
             priceHistory: {
-                price: Number(proposedPrice),
+                price: revisedPrice,
                 setBy: "seeker",
                 setByEmail: req.user.email,
                 timestamp: occurredAt,
@@ -823,7 +904,7 @@ export const reviseApplication = async (req, res) => {
                 action: "offer_revised",
                 actor: "seeker",
                 actorEmail: req.user.email,
-                proposedPrice: Number(proposedPrice),
+                proposedPrice: revisedPrice,
                 status: "pending",
                 message: message || "",
                 timestamp: occurredAt
@@ -844,7 +925,7 @@ export const reviseApplication = async (req, res) => {
                         senderName: seekerIdentity.name,
                         text: message,
                         actionType: "offer_revised",
-                        linkedPrice: Number(proposedPrice),
+                        linkedPrice: revisedPrice,
                         timestamp: occurredAt
                     }
                 }
@@ -870,12 +951,12 @@ export const reviseApplication = async (req, res) => {
         const applicationForNotification = await enrichApplicationParticipants(db, {
             ...application,
             ...setData,
-            proposedPrice: Number(proposedPrice),
+            proposedPrice: revisedPrice,
             message: message ?? application.message
         });
 
         await queueOfferRevisedEmail(applicationForNotification, occurredAt, {
-            proposedPrice: Number(proposedPrice),
+            proposedPrice: revisedPrice,
             message: message || ""
         });
 

@@ -7,12 +7,22 @@ import useAuth from '../../Hooks/useAuth';
 import { showToast } from '../../Utilities/ToastMessage';
 import { useQueryClient } from '@tanstack/react-query';
 
+const getLastPriceByActor = (application, actor) => {
+    if (!Array.isArray(application?.priceHistory)) return null;
+    const prices = application.priceHistory
+        .filter((entry) => entry?.setBy === actor && Number(entry?.price) > 0)
+        .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    return prices.length > 0 ? Number(prices[prices.length - 1].price) : null;
+};
+
 const ReviseOfferModal = ({ isOpen, onClose, application }) => {
     const { user } = useAuth();
     const axios = useAxios();
     const queryClient = useQueryClient();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const property = application?.property;
+    const lastSeekerPrice = getLastPriceByActor(application, 'seeker') ?? 0;
+    const lastOwnerPrice = getLastPriceByActor(application, 'owner') ?? Number(application?.proposedPrice || 0);
     
     const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm({
         defaultValues: {
@@ -50,10 +60,21 @@ const ReviseOfferModal = ({ isOpen, onClose, application }) => {
         try {
             setIsSubmitting(true);
             const token = await user.getIdToken();
+            const revisedPrice = Number(data.proposedPrice);
+
+            if (revisedPrice <= lastSeekerPrice) {
+                showToast(`Revised offer must be greater than ${lastSeekerPrice.toLocaleString()}`, 'error');
+                return;
+            }
+
+            if (revisedPrice >= lastOwnerPrice) {
+                showToast(`Revised offer must be less than ${lastOwnerPrice.toLocaleString()}`, 'error');
+                return;
+            }
 
             // Revise offer by updating the application with new price, message and setting status back to pending
             await axios.patch(`/application/${application._id}/revise`, {
-                proposedPrice: Number(data.proposedPrice),
+                proposedPrice: revisedPrice,
                 message: data.message || ''
             }, {
                 headers: {
@@ -106,9 +127,10 @@ const ReviseOfferModal = ({ isOpen, onClose, application }) => {
                             {...register("proposedPrice", {
                                 required: "Price is required",
                                 min: {
-                                    value: 1,
-                                    message: "Price must be greater than 0"
-                                }
+                                    value: lastSeekerPrice + Number.EPSILON,
+                                    message: `Revised offer must be greater than ${lastSeekerPrice.toLocaleString()}`
+                                },
+                                validate: (value) => Number(value) < lastOwnerPrice || `Revised offer must be less than ${lastOwnerPrice.toLocaleString()}`
                             })}
                             className="w-full bg-white border border-gray-200 rounded-md px-4 py-3 text-gray-800 focus:border-orange-500 outline-none transition-all"
                         />
@@ -116,7 +138,7 @@ const ReviseOfferModal = ({ isOpen, onClose, application }) => {
                             <p className="text-red-500 text-xs mt-1">{errors.proposedPrice.message}</p>
                         )}
                         <p className="text-xs text-gray-400 mt-1">
-                            Enter your revised offer price
+                            Allowed range: more than {"\u09F3"}{lastSeekerPrice.toLocaleString()} and less than {"\u09F3"}{lastOwnerPrice.toLocaleString()}
                         </p>
                     </div>
 

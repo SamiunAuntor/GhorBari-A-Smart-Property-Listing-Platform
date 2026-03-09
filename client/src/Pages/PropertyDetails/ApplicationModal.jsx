@@ -11,6 +11,7 @@ const ApplicationModal = ({ isOpen, onClose, property }) => {
     const axios = useAxios();
     const queryClient = useQueryClient();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const listingPrice = Number(property?.price || 0);
     const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm({
         defaultValues: {
             proposedPrice: property?.price || ''
@@ -30,10 +31,16 @@ const ApplicationModal = ({ isOpen, onClose, property }) => {
         try {
             setIsSubmitting(true);
             const token = await user.getIdToken();
+            const offerPrice = Number(data.proposedPrice);
+
+            if (offerPrice > listingPrice) {
+                showToast(`Offer price cannot exceed the listing price of ${listingPrice.toLocaleString()}`, 'error');
+                return;
+            }
 
             const payload = {
                 propertyId: property._id,
-                proposedPrice: Number(data.proposedPrice),
+                proposedPrice: offerPrice,
                 message: data.message || ""
             };
 
@@ -103,7 +110,8 @@ const ApplicationModal = ({ isOpen, onClose, property }) => {
                                 min: {
                                     value: 1,
                                     message: "Price must be greater than 0"
-                                }
+                                },
+                                validate: (value) => Number(value) <= listingPrice || `Offer price cannot exceed the listing price of ${listingPrice.toLocaleString()}`
                             })}
                             className="w-full bg-white border border-gray-200 rounded-md px-4 py-3 text-gray-800 focus:border-orange-500 outline-none transition-all"
                         />
@@ -111,7 +119,7 @@ const ApplicationModal = ({ isOpen, onClose, property }) => {
                             <p className="text-red-500 text-xs mt-1">{errors.proposedPrice.message}</p>
                         )}
                         <p className="text-xs text-gray-400 mt-1">
-                            Price is pre-filled with the listing price. You can edit it to make your offer.
+                            Price is pre-filled with the listing price. Your offer can be any positive amount up to {"\u09F3"}{listingPrice.toLocaleString()}.
                         </p>
                     </div>
 
