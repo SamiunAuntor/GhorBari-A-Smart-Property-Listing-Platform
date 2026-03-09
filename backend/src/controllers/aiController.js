@@ -1,6 +1,7 @@
 import { buildPropertyDescriptionPrompt, validatePropertyDescriptionPayload } from "../services/propertyDescriptionPromptService.js";
 import { generateGroqText, getGroqModel } from "../services/groqService.js";
 import { generatePropertyPriceEstimate } from "../services/propertyAppraisalService.js";
+import { searchWebContext } from "../services/webSearchService.js";
 
 const GROQ_MODEL = getGroqModel();
 
@@ -177,16 +178,28 @@ export const sendMessageToAI = async (req, res) => {
 
         const propertyContext = await getPropertyContextForAi(req.db, message);
 
+        let webContext = [];
+        try {
+            webContext = await searchWebContext(`${message} Bangladesh real estate`, 5);
+        } catch (webError) {
+            console.error("Web search context fetch failed:", webError.message);
+        }
+
         const systemPrompt = `You are Ghor AI, a helpful real estate assistant for a property rental and sales platform called "GHOR BARI" (which means "home" in Bengali). You help users find properties, answer questions about real estate, provide advice on renting or buying properties in Bangladesh, and assist with any property-related queries.
 
     Be friendly, professional, and helpful. Keep responses concise and informative.
     Always respond in plain text. Do not use markdown formatting, headings, bullets, asterisks, or hash symbols.
 
-    You have access to a local property database snapshot. When suggesting properties, use only the provided records and do not invent listings.
-    If there are no matching records, say that clearly and ask the user for preferred budget/location/property type.
-    Mention property IDs when relevant so users can identify exact listings.`;
+    You have access to two data sources:
+    1) Local GHOR BARI database snapshot.
+    2) Online web snippets.
 
-        const userPrompt = `User message: ${message}\n\nProperty data snapshot (JSON):\n${JSON.stringify(propertyContext)}`;
+    Prioritize local database records when recommending actual listings. Do not invent local listings.
+    If no local listing matches, clearly say so and then provide helpful online guidance.
+    When using web data, mention source URLs in plain text.
+    Mention local property IDs when relevant so users can identify exact listings.`;
+
+        const userPrompt = `User message: ${message}\n\nLocal property data snapshot (JSON):\n${JSON.stringify(propertyContext)}\n\nOnline web snippets (JSON):\n${JSON.stringify(webContext)}`;
 
         try {
             const aiResponse = await generateGroqText({
