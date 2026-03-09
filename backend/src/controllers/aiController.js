@@ -162,7 +162,6 @@ function formatLocalPropertyMatches(properties) {
         if (area) {
             lines.push(`  📏 ${area}`);
         }
-        lines.push(`  ID: ${property.id}`);
         lines.push("");
     });
 
