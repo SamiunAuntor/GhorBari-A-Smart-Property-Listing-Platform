@@ -936,10 +936,6 @@ curl -X GET http://localhost:5000/api/users/user-profile \
   -H "Authorization: Bearer <token>"
 ```
 
-### Code Quality
-
----
-
 ## 📖 Additional Resources
 
 - [Express.js Documentation](https://expressjs.com/)
