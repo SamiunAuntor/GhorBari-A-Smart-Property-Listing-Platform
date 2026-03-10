@@ -43,7 +43,7 @@ A comprehensive full-stack web application for buying, renting, and managing pro
 
 ## 🎯 Overview
 
-**Ghor Bari** (গৃহ বারি - "Home" in Bengali) is a modern, feature-rich property platform specifically designed for the Bangladesh real estate market. It connects property owners with potential buyers and renters, facilitating seamless property discovery, communication, and transactions.
+**Ghor Bari** (ঘর বাড়ি - "Home" in Bengali) is a modern, feature-rich property platform specifically designed for the Bangladesh real estate market. It connects property owners with potential buyers and renters, facilitating seamless property discovery, communication, and transactions.
 
 ### Key Highlights
 
@@ -59,8 +59,6 @@ A comprehensive full-stack web application for buying, renting, and managing pro
 - ⚡ **High Performance**: Optimized caching and database queries
 
 ---
-
-## ✨ Features
 
 ## ✨ Features
 
@@ -206,7 +204,7 @@ A comprehensive full-stack web application for buying, renting, and managing pro
 | **Socket.io**          | Real-time communication | 4.8.1   |
 | **Node-cron**          | Task scheduling         | 4.2.1   |
 | **Nodemailer**         | Email service           | 8.0.1   |
-| **Bcryptjs**           | Password encryption     | 3.0.3   |
+| **Firebase Admin SDK** | Server-side Firebase    | 13.7.0  |
 
 ### External Services
 
@@ -215,7 +213,7 @@ A comprehensive full-stack web application for buying, renting, and managing pro
 | **Groq API**        | AI content generation |
 | **Firebase Auth**   | User authentication   |
 | **ImgBB**           | Image hosting         |
-| **Google Maps API** | Location services     |
+| **React Leaflet / Leaflet** | Interactive map rendering     |
 | **Nodemailer**      | Email notifications   |
 
 ---
@@ -312,43 +310,54 @@ npm install
 ```env
 NODE_ENV=development
 PORT=5000
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/?retryWrites=true&w=majority
-DB_NAME=ghor-bari
+MONGO_URI=mongodb://localhost:27017/ghorbari
 
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_PRIVATE_KEY=your-private-key
-FIREBASE_CLIENT_EMAIL=your-client-email
+EMAIL_PROVIDER=emailjs
 
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASSWORD=your-app-password
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_smtp_user
+SMTP_PASS=your_smtp_app_password
+EMAIL_FROM=GhorBari <no-reply@example.com>
 
-GROQ_API_KEY=your-groq-key
+CLIENT_URL=http://localhost:5173
+
+EMAILJS_SERVICE_ID=your_emailjs_service_id
+EMAILJS_TEMPLATE_ID=your_emailjs_template_id
+EMAILJS_PUBLIC_KEY=your_emailjs_public_key
+EMAILJS_PRIVATE_KEY=your_emailjs_private_key
+
+GEMINI_API_KEY=your_gemini_api_key
+GROQ_API_KEY=your_groq_api_key
 
 ENABLE_EMAIL_JOB_CRON=true
-ENABLE_SOCKET_IO=true
 INTERNAL_CRON_SECRET=your-internal-secret
 EMAIL_JOB_BATCH_SIZE=10
 ```
 
-Note: the current backend code reads `MONGO_URI` for the database connection. Keep `MONGO_URI` and `MONGODB_URI` aligned if both are present in your local setup.
+Use your deployed frontend URL in `CLIENT_URL` for production.
 
 ### Frontend .env
 
 ```env
-VITE_FIREBASE_API_KEY=your-api-key
-VITE_FIREBASE_AUTH_DOMAIN=your-domain.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your-project-id
-VITE_FIREBASE_STORAGE_BUCKET=your-bucket.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
-VITE_FIREBASE_APP_ID=your-app-id
+VITE_apiKey=your_firebase_api_key
+VITE_authDomain=your-project.firebaseapp.com
+VITE_projectId=your_project_id
+VITE_storageBucket=your-project.firebasestorage.app
+VITE_messagingSenderId=your_sender_id
+VITE_appId=your_app_id
 
-VITE_SERVER_URL=http://localhost:5000
+VITE_IMGBB_KEY=your_imgbb_key
 VITE_API_URL=http://localhost:5000
 ```
 
-Note: the current AI/chat client uses `VITE_API_URL` as the primary API base URL.
+Example production API URL:
+
+```env
+VITE_API_URL=https://your-backend-service.onrender.com
+```
+
+Note: the current frontend Firebase config uses the lowercase `VITE_apiKey`-style keys shown above.
 
 ---
 
@@ -664,18 +673,19 @@ Frontend
 
 ## 🚀 Deployment Guide
 
-### Frontend (Vercel)
+### Frontend (Firebase Hosting)
 
 ```bash
 npm run build
-vercel deploy
+firebase deploy
 ```
 
-### Backend (Railway/Heroku)
+### Backend (Render)
 
 ```bash
-git push heroku main
-# Set environment variables in dashboard
+# Connect the repository in Render
+# Set environment variables in the Render dashboard
+# Deploy the web service
 ```
 
 ### Database (MongoDB Atlas)
@@ -796,273 +806,3 @@ This project is licensed under the ISC License. See [LICENSE](./LICENSE) for det
 ### Built with ❤️ for Bangladesh Real Estate
 
 [⬆ back to top](#-ghor-bari---property-rental--listing-platform)
-
-</div>
-
-## 📁 Project Structure
-
-```
-GHOR_BARI/
-├── backend/
-│   ├── src/
-│   │   ├── app.js                 # Express app setup
-│   │   ├── config/
-│   │   │   ├── db.js              # MongoDB connection
-│   │   │   ├── firebase.js        # Firebase configuration
-│   │   │   └── socket.js          # Socket.io setup
-│   │   ├── controllers/           # Business logic
-│   │   │   ├── adminController.js
-│   │   │   ├── applicationController.js
-│   │   │   ├── chatController.js
-│   │   │   ├── comparisonController.js
-│   │   │   ├── propertyController.js
-│   │   │   └── userController.js
-│   │   ├── models/                # MongoDB schemas
-│   │   │   ├── Chat.js
-│   │   │   └── Comparison.js
-│   │   ├── routes/                # API endpoints
-│   │   │   ├── adminRoutes.js
-│   │   │   ├── applicationRoutes.js
-│   │   │   ├── chatRoutes.js
-│   │   │   ├── comparisonRoutes.js
-│   │   │   ├── propertyRoutes.js
-│   │   │   └── userRoutes.js
-│   │   ├── middleware/            # Custom middleware
-│   │   │   ├── verifyAdmin.js
-│   │   │   ├── verifyOwner.js
-│   │   │   ├── verifyPropertyOwner.js
-│   │   │   └── verifyToken.js
-│   │   └── events/
-│   │       └── chatEvents.js
-│   ├── server.js                  # Server entry point
-│   └── package.json
-│
-├── client/
-│   ├── src/
-│   │   ├── main.jsx               # React entry point
-│   │   ├── Router.jsx             # Route configuration
-│   │   ├── index.css              # Global styles
-│   │   ├── Components/            # Reusable components
-│   │   │   ├── Banner.jsx
-│   │   │   ├── Footer.jsx
-│   │   │   ├── NavBar.jsx
-│   │   │   └── ...
-│   │   ├── Pages/                 # Page components
-│   │   │   ├── HomePage.jsx
-│   │   │   ├── LoginPage.jsx
-│   │   │   ├── RegisterPage.jsx
-│   │   │   ├── AdminDashboard/
-│   │   │   ├── BuyOrRentPage/
-│   │   │   ├── ChatPage/
-│   │   │   ├── ListPropertyPage/
-│   │   │   ├── ProfilePage/
-│   │   │   ├── PropertyDetails/
-│   │   │   └── ...
-│   │   ├── context/               # React Context
-│   │   │   └── ChatContext.jsx
-│   │   ├── Firebase/              # Firebase configuration
-│   │   │   ├── AuthProvider.jsx
-│   │   │   └── firebase.config.js
-│   │   ├── Hooks/                 # Custom React hooks
-│   │   │   ├── useAuth.jsx
-│   │   │   ├── useAdmin.jsx
-│   │   │   ├── useAxios.jsx
-│   │   │   ├── useChat.jsx
-│   │   │   ├── useRole.jsx
-│   │   │   └── useSocket.jsx
-│   │   ├── Layouts/               # Layout components
-│   │   │   ├── HomeLayout.jsx
-│   │   │   └── DashboardLayout.jsx
-│   │   ├── Utilities/             # Helper functions
-│   │   │   ├── ChatHelpers.js
-│   │   │   ├── socketClient.js
-│   │   │   └── UploadImage.js
-│   │   └── PrivateRoute/          # Protected routes
-│   │       ├── PrivateRoute.jsx
-│   │       └── AdminRoute.jsx
-│   ├── public/                    # Static assets
-│   │   ├── districts.json
-│   │   ├── divisions.json
-│   │   └── upzillas.json
-│   ├── vite.config.js             # Vite configuration
-│   ├── eslint.config.js           # ESLint configuration
-│   ├── index.html
-│   └── package.json
-│
-├── LICENSE
-└── README.md
-```
-
-## 📦 Installation
-
-### Prerequisites
-
-- Node.js (v14 or higher)
-- npm or yarn
-- MongoDB (local or cloud instance)
-- Firebase project with credentials
-
-### Backend Setup
-
-1. Navigate to backend directory:
-
-```bash
-cd backend
-```
-
-2. Install dependencies:
-
-```bash
-npm install
-```
-
-3. Create `.env` file in backend directory with required variables (see Configuration section)
-
-### Frontend Setup
-
-1. Navigate to client directory:
-
-```bash
-cd client
-```
-
-2. Install dependencies:
-
-```bash
-npm install
-```
-
-3. Create `.env` file in client directory with Firebase configuration
-
-## ⚙️ Configuration
-
-### Backend Environment Variables
-
-Create a `.env` file in the `backend/` directory:
-
-```env
-PORT=5000
-MONGODB_URI=your_mongodb_connection_string
-FIREBASE_PROJECT_ID=your_firebase_project_id
-FIREBASE_PRIVATE_KEY=your_firebase_private_key
-FIREBASE_CLIENT_EMAIL=your_firebase_client_email
-JWT_SECRET=your_jwt_secret_key
-NODE_ENV=development
-```
-
-### Frontend Environment Variables
-
-Create a `.env` file in the `client/` directory:
-
-```env
-VITE_FIREBASE_API_KEY=your_firebase_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain
-VITE_FIREBASE_PROJECT_ID=your_firebase_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_firebase_storage_bucket
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
-VITE_FIREBASE_APP_ID=your_firebase_app_id
-VITE_SERVER_URL=http://localhost:5000
-```
-
-### Firebase Setup
-
-1. Create a Firebase project at [Firebase Console](https://console.firebase.google.com)
-2. Enable Authentication, Firestore, and Storage
-3. Download service account key and place it as `ghor-bari-firebase-admin-sdk.json` in backend directory
-4. Get web app credentials for frontend
-
-## 🚀 Running the Application
-
-### Development Mode
-
-**Backend:**
-
-```bash
-cd backend
-npm start
-```
-
-Server runs on `http://localhost:5000`
-
-**Frontend:**
-
-```bash
-cd client
-npm run dev
-```
-
-Client runs on `http://localhost:5173` (default Vite port)
-
-### Production Build
-
-**Frontend:**
-
-```bash
-cd client
-npm run build
-```
-
-## 📚 API Documentation
-
-### Authentication Routes
-
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login user
-- `POST /api/auth/logout` - Logout user
-
-### User Routes
-
-- `GET /api/users/:id` - Get user profile
-- `PUT /api/users/:id` - Update user profile
-- `GET /api/users` - Get all users (Admin only)
-
-### Property Routes
-
-- `GET /api/properties` - Get all properties
-- `GET /api/properties/:id` - Get property details
-- `POST /api/properties` - Create new property
-- `PUT /api/properties/:id` - Update property
-- `DELETE /api/properties/:id` - Delete property
-
-### Chat Routes
-
-- `GET /api/chats` - Get user's conversations
-- `GET /api/chats/:id` - Get conversation messages
-- `POST /api/chats` - Create new conversation
-- `POST /api/chats/:id/messages` - Send message
-
-### Admin Routes
-
-- `GET /api/admin/dashboard` - Admin dashboard data
-- `GET /api/admin/properties` - Pending properties
-- `PUT /api/admin/properties/:id/approve` - Approve property
-- `PUT /api/admin/users/:id/verify` - Verify user
-
-## 🏗️ Project Architecture
-
-### Frontend Architecture
-
-- **Component-based**: Modular, reusable React components
-- **Context API**: State management for authentication and chat
-- **Custom Hooks**: Encapsulated logic for API calls, authentication, and sockets
-- **Private Routes**: Protected pages with role-based access
-
-### Backend Architecture
-
-- **MVC Pattern**: Models, Controllers, Routes structure
-- **Middleware**: Request validation and authentication
-- **Socket.io**: Real-time events for chat functionality
-- **Firebase Integration**: User authentication and token verification
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Create a feature branch: `git checkout -b feature/YourFeature`
-2. Commit your changes: `git commit -m 'Add YourFeature'`
-3. Push to the branch: `git push origin feature/YourFeature`
-4. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
