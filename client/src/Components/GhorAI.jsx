@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router";
 import { MessageCircle, X, Send, Bot, User, Loader2 } from "lucide-react";
 import { sendMessageToGemini } from "../Utilities/geminiService";
 import useAxiosSecure from "../Hooks/useAxiosSecure";
 
 const GhorAI = () => {
+    const navigate = useNavigate();
     const axiosSecure = useAxiosSecure();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
@@ -12,6 +14,7 @@ const GhorAI = () => {
             text: "Hello! I'm Ghor AI, your personal real estate assistant. How can I help you find your perfect home today?",
             isBot: true,
             timestamp: new Date(),
+            matchedProperties: [],
         },
     ]);
     const [inputMessage, setInputMessage] = useState("");
@@ -52,9 +55,10 @@ const GhorAI = () => {
             
             const botMessage = {
                 id: Date.now() + 1,
-                text: response,
+                text: response.text,
                 isBot: true,
                 timestamp: new Date(),
+                matchedProperties: response.matchedProperties || [],
             };
 
             setMessages((prev) => [...prev, botMessage]);
@@ -89,6 +93,7 @@ const GhorAI = () => {
                 text: errorText,
                 isBot: true,
                 timestamp: new Date(),
+                matchedProperties: [],
             };
             setMessages((prev) => [...prev, errorMessage]);
         } finally {
@@ -101,6 +106,56 @@ const GhorAI = () => {
             e.preventDefault();
             handleSendMessage();
         }
+    };
+
+    const renderBotText = (text) => {
+        if (!text) {
+            return null;
+        }
+
+        const normalizedLines = text
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean);
+
+        if (normalizedLines.length === 0) {
+            return null;
+        }
+
+        const [heading, ...contentLines] = normalizedLines;
+
+        if (contentLines.length === 0) {
+            return (
+                <p className="text-xs leading-6 text-gray-800 break-words">
+                    {heading}
+                </p>
+            );
+        }
+
+        return (
+            <div className="mt-1 space-y-3">
+                <p className="text-sm font-semibold text-gray-900">{heading}</p>
+                <div>
+                    {contentLines.map((line, index) => {
+                        const isNumberedItem = /^\d+\./.test(line);
+                        const spacingClass = index === 0
+                            ? "mt-0"
+                            : isNumberedItem
+                                ? "mt-3"
+                                : "mt-1";
+
+                        return (
+                        <p
+                            key={`${heading}-${index}`}
+                            className={`text-xs leading-6 text-gray-800 break-words ${spacingClass}`}
+                        >
+                            {line}
+                        </p>
+                        );
+                    })}
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -160,7 +215,38 @@ const GhorAI = () => {
                                             : "bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-tr-none"
                                     }`}
                                 >
-                                    <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
+                                    {message.isBot && Array.isArray(message.matchedProperties) && message.matchedProperties.length > 0 && (
+                                        <div className="mt-3 mb-5 space-y-3">
+                                            <p className="text-sm font-semibold text-gray-900">
+                                                🏠 Properties available on Ghor Bari
+                                            </p>
+                                            {message.matchedProperties.map((property) => (
+                                                <div key={property.id} className="rounded-xl border border-orange-100 bg-orange-50 p-3">
+                                                    <p className="text-sm font-semibold text-gray-900">{property.title}</p>
+                                                    <div className="mt-2 space-y-1 text-xs text-gray-700">
+                                                        <p>📍 {property.location}</p>
+                                                        <p>💰 {property.price ? `BDT ${property.price}` : "Price n/a"}</p>
+                                                        <p>🏢 {property.listingType} {property.propertyType}</p>
+                                                        {property.areaSqFt ? (
+                                                            <p>📏 {property.areaSqFt} sqft</p>
+                                                        ) : (
+                                                            <p>📏 Area n/a</p>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => navigate(`/property-details/${property.id}`)}
+                                                        className="mt-3 rounded-lg bg-orange-500 px-3 py-2 text-xs font-medium text-white transition hover:bg-orange-600"
+                                                    >
+                                                        View Property
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {message.isBot ? renderBotText(message.text) : (
+                                        <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
+                                    )}
                                     <p className={`text-xs mt-1 ${message.isBot ? "text-gray-400" : "text-orange-100"}`}>
                                         {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                     </p>

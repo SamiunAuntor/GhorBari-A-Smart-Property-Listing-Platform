@@ -22,7 +22,7 @@ function normalizeAiResponseText(text) {
  * @param {string} message - The user's message
  * @param {array} conversationHistory - Previous messages (currently unused, for future enhancement)
  * @param {object} axiosInstance - Axios instance with authorization headers (optional)
- * @returns {Promise<string>} The AI response text
+ * @returns {Promise<{text: string, matchedProperties: array}>} The AI response payload
  */
 export const sendMessageToGemini = async (message, conversationHistory = [], axiosInstance = null) => {
     try {
@@ -40,7 +40,12 @@ export const sendMessageToGemini = async (message, conversationHistory = [], axi
 
                 if (response.data?.success && response.data?.response) {
                     console.log("✅ AI response received successfully");
-                    return normalizeAiResponseText(response.data.response);
+                    return {
+                        text: normalizeAiResponseText(response.data.response),
+                        matchedProperties: Array.isArray(response.data.matchedProperties)
+                            ? response.data.matchedProperties
+                            : []
+                    };
                 }
 
                 throw new Error(response.data?.error || "Invalid response from AI service");
@@ -88,7 +93,12 @@ export const sendMessageToGemini = async (message, conversationHistory = [], axi
             if (response.ok) {
                 const data = await response.json();
                 if (data.success && data.response) {
-                    return normalizeAiResponseText(data.response);
+                    return {
+                        text: normalizeAiResponseText(data.response),
+                        matchedProperties: Array.isArray(data.matchedProperties)
+                            ? data.matchedProperties
+                            : []
+                    };
                 }
                 throw new Error(data.error || "Invalid response from AI service");
             }

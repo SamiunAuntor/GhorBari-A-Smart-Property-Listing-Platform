@@ -168,6 +168,18 @@ function formatLocalPropertyMatches(properties) {
     return lines.join("\n").trim();
 }
 
+function buildMatchedProperties(properties) {
+    return properties.slice(0, 5).map((property) => ({
+        id: property.id,
+        title: property.title || "Untitled property",
+        location: formatLocation(property),
+        price: property.price ?? null,
+        listingType: property.listingType || "n/a",
+        propertyType: property.propertyType || "property",
+        areaSqFt: property.areaSqFt ?? null
+    }));
+}
+
 async function getBestPropertyMatches(database, message, limit = 6) {
     const strictContext = await getPropertyContextForAi(database, message, limit);
     if (strictContext.total > 0) {
@@ -334,38 +346,28 @@ Always keep the response clean and easy to read.`;
                 topP: 0.95
             });
 
-            const localSectionHeader = "🏠 Properties available on GhorAi";
-            const localSectionBody = propertyContext.total > 0
-                ? formatLocalPropertyMatches(propertyContext.properties)
-                : "No relevant property found in our database for this exact request.";
-
-            const divider = "──────────";
-            const externalSectionHeader = "💡 Area or housing suggestions";
-
-            const combinedResponse = `${localSectionHeader}\n\n${localSectionBody}\n\n${divider}\n\n${externalSectionHeader}\n\n${aiResponse}`;
+            const combinedResponse = propertyContext.total > 0
+                ? `Area or housing suggestions\n\n${aiResponse}`
+                : `Properties available on Ghor Bari\n\nNo relevant property found in our database for this exact request.\n\n──────────\n\nArea or housing suggestions\n\n${aiResponse}`;
 
             return res.status(200).json({
                 success: true,
                 response: normalizeAiChatResponse(combinedResponse),
+                matchedProperties: buildMatchedProperties(propertyContext.properties),
                 model: GROQ_MODEL,
                 source: propertyContext.total > 0 ? "hybrid-db-and-web" : "web-with-db-check"
             });
         } catch (error) {
-            const localSectionHeader = "🏠 Properties available on GhorAi";
-            const localSectionBody = propertyContext.total > 0
-                ? formatLocalPropertyMatches(propertyContext.properties)
-                : "No relevant property found in our database for this exact request.";
-
-            const divider = "──────────";
-            const externalSectionHeader = "💡 Area or housing suggestions";
-
-            const combinedFallback = `${localSectionHeader}\n\n${localSectionBody}\n\n${divider}\n\n${externalSectionHeader}\n\nOnline response is temporarily unavailable. Please try again in a moment.`;
+            const combinedFallback = propertyContext.total > 0
+                ? "Area or housing suggestions\n\nOnline response is temporarily unavailable. Please try again in a moment."
+                : "Properties available on Ghor Bari\n\nNo relevant property found in our database for this exact request.\n\n──────────\n\nArea or housing suggestions\n\nOnline response is temporarily unavailable. Please try again in a moment.";
 
             const statusCode = error.response?.status || error.statusCode;
             if (propertyContext.total > 0 && (statusCode === 429 || statusCode === 503 || statusCode === 500)) {
                 return res.status(200).json({
                     success: true,
                     response: normalizeAiChatResponse(combinedFallback),
+                    matchedProperties: buildMatchedProperties(propertyContext.properties),
                     model: GROQ_MODEL,
                     source: "database-only-fallback"
                 });
