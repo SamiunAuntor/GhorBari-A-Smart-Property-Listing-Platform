@@ -537,8 +537,37 @@ export const getFeaturedProperties = async (req, res) => {
             .sort({ createdAt: -1 })          // newest first
             .limit(limit)
             .toArray();
+        
+        const ownerEmails = [...new Set(result.map((property) => property.owner?.email).filter(Boolean))];
+        const owners = ownerEmails.length > 0
+            ? await db.collection("users")
+                .find(
+                    { email: { $in: ownerEmails } },
+                    { projection: { email: 1, nidVerified: 1, rating: 1, name: 1, profileImage: 1, phone: 1 } }
+                )
+                .toArray()
+            : [];
 
-        return res.json(result);
+        const ownerMap = new Map(owners.map((owner) => [owner.email, owner]));
+
+        const enrichedResult = result.map((property) => {
+            const ownerProfile = ownerMap.get(property.owner?.email);
+            return {
+                ...property,
+                owner: {
+                    ...property.owner,
+                    name: ownerProfile?.name || property.owner?.name || "Owner",
+                    email: ownerProfile?.email || property.owner?.email || "",
+                    photoURL: ownerProfile?.profileImage || property.owner?.photoURL || "",
+                    phone: ownerProfile?.phone || property.owner?.phone || "",
+                    nidVerified: ownerProfile?.nidVerified || "unverified",
+                    rating: ownerProfile?.rating || { totalRatings: 0, ratingCount: 0, average: 0 }
+                },
+                ownerNidVerified: ownerProfile?.nidVerified || "unverified"
+            };
+        });
+
+        return res.json(enrichedResult);
 
     } catch (error) {
 
