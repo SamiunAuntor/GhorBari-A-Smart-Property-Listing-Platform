@@ -357,13 +357,13 @@ out center;
     }, [price, listingType]);
 
     const decodedLocation = useMemo(() => {
-        if (!address || geoMaps.divisionMap.size === 0) return address?.street || "Loading...";
+        if (!address) return "Loading...";
         return [
             address.street,
-            geoMaps.upazilaMap.get(String(address.upazila_id)),
-            geoMaps.districtMap.get(String(address.district_id)),
-            geoMaps.divisionMap.get(String(address.division_id))
-        ].filter(Boolean).join(", ");
+            address.upazila_name || geoMaps.upazilaMap.get(String(address.upazila_id)),
+            address.district_name || geoMaps.districtMap.get(String(address.district_id)),
+            address.division_name || geoMaps.divisionMap.get(String(address.division_id))
+        ].filter(Boolean).join(", ") || address.street || "Location unavailable";
     }, [address, geoMaps]);
 
     const appraisal = property?.aiAppraisal || null;

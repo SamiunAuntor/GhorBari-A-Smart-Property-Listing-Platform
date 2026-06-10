@@ -22,9 +22,9 @@ function formatAmenities(amenities = []) {
 function buildAddressLabel(address = {}) {
     return [
         compactText(address.street),
-        compactText(address.upazila_id),
-        compactText(address.district_id),
-        compactText(address.division_id)
+        compactText(address.upazila_name || address.upazila_id),
+        compactText(address.district_name || address.district_id),
+        compactText(address.division_name || address.division_id)
     ].filter(Boolean).join(", ");
 }
 

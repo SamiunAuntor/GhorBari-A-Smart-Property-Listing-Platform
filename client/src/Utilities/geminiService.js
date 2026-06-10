@@ -17,10 +17,21 @@ function normalizeAiResponseText(text) {
         .trim();
 }
 
+function buildConversationHistoryPayload(history = []) {
+    if (!Array.isArray(history)) {
+        return [];
+    }
+
+    return history.slice(-6).map((entry) => ({
+        text: entry?.text || "",
+        isBot: Boolean(entry?.isBot)
+    }));
+}
+
 /**
- * Send a message to the Ghor AI backend for processing with Gemini API
+ * Send a message to the Ghor AI backend for processing
  * @param {string} message - The user's message
- * @param {array} conversationHistory - Previous messages (currently unused, for future enhancement)
+ * @param {array} conversationHistory - Previous messages for lightweight AI memory
  * @param {object} axiosInstance - Axios instance with authorization headers (optional)
  * @returns {Promise<{text: string, matchedProperties: array}>} The AI response payload
  */
@@ -30,12 +41,14 @@ export const sendMessageToGemini = async (message, conversationHistory = [], axi
             throw new Error("Message cannot be empty");
         }
 
+        const historyPayload = buildConversationHistoryPayload(conversationHistory);
+
         // Use provided axios instance for authenticated requests
         if (axiosInstance) {
             try {
                 const response = await axiosInstance.post("/api/ai/send-message", {
                     message: message.trim(),
-                    conversationHistory: conversationHistory
+                    conversationHistory: historyPayload
                 });
 
                 if (response.data?.success && response.data?.response) {
@@ -86,7 +99,7 @@ export const sendMessageToGemini = async (message, conversationHistory = [], axi
                 },
                 body: JSON.stringify({
                     message: message.trim(),
-                    conversationHistory: conversationHistory
+                    conversationHistory: historyPayload
                 })
             });
 

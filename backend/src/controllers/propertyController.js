@@ -2,6 +2,7 @@ import { getDatabase } from "../config/db.js";
 
 import { ObjectId } from "mongodb";
 import { generatePropertyAppraisal } from "../services/propertyAppraisalService.js";
+import { buildPropertyAddress, buildPropertySearchText } from "../services/propertyLocationService.js";
 
 export const postProperty = async (req, res) => {
 
@@ -22,13 +23,7 @@ export const postProperty = async (req, res) => {
             price: Number(data.price),             // sale price or rent per month
             areaSqFt: Number(data.areaSqFt),
 
-            // Address object now stores IDs + full address
-            address: {
-                division_id: data.address.division_id,
-                district_id: data.address.district_id,
-                upazila_id: data.address.upazila_id,
-                street: data.address.street
-            },
+            address: buildPropertyAddress(data.address),
 
             // Array of image URLs from ImgBB
             images: data.images || [],
@@ -71,6 +66,8 @@ export const postProperty = async (req, res) => {
             console.error("Property appraisal generation failed during property creation:", appraisalError.message);
             property.aiAppraisal = null;
         }
+
+        property.searchText = buildPropertySearchText(property);
 
         // Insert directly into the "properties" collection
 
@@ -257,6 +254,12 @@ export const updateProperty = async (req, res) => {
             console.error("Property appraisal generation failed during property update:", appraisalError.message);
             updateData.aiAppraisal = existingProperty.aiAppraisal || null;
         }
+
+        updateData.searchText = buildPropertySearchText({
+            ...existingProperty,
+            ...updateData,
+            address: existingProperty.address
+        });
 
         const result = await db.collection("properties").updateOne(
             { _id: new ObjectId(id), "owner.email": req.user.email },

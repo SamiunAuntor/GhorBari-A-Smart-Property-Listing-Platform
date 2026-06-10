@@ -76,6 +76,10 @@ const AddProperty = () => {
     const watchOverview = watch("overview");
     const watchAmenities = watch("amenities");
 
+    const selectedDivisionName = getLabelById(divisions, watchDiv);
+    const selectedDistrictName = getLabelById(districts, watchDist);
+    const selectedUpazilaName = getLabelById(upazilas, watchUpazila) || getLabelById(thanas, watchUpazila);
+
     useEffect(() => {
         if (watchDiv && lastUpdateRef.current.division !== watchDiv) {
             const div = divisions.find(d => String(d.id) === String(watchDiv));
@@ -201,9 +205,9 @@ const AddProperty = () => {
                 bathrooms: propertyType === "flat" ? Number(watchBathrooms) : undefined,
                 floorCount: propertyType === "building" ? Number(watchFloorCount) : undefined,
                 totalUnits: propertyType === "building" ? Number(watchTotalUnits) : undefined,
-                divisionName: getLabelById(divisions, watchDiv),
-                districtName: getLabelById(districts, watchDist),
-                upazilaName: getLabelById(upazilas, watchUpazila) || getLabelById(thanas, watchUpazila),
+                divisionName: selectedDivisionName,
+                districtName: selectedDistrictName,
+                upazilaName: selectedUpazilaName,
                 address: watch("address"),
                 amenities: Array.isArray(watchAmenities) ? watchAmenities : watchAmenities ? [watchAmenities] : []
             };
@@ -245,9 +249,9 @@ const AddProperty = () => {
                 bathrooms: propertyType === "flat" ? Number(watchBathrooms) : undefined,
                 floorCount: propertyType === "building" ? Number(watchFloorCount) : undefined,
                 totalUnits: propertyType === "building" ? Number(watchTotalUnits) : undefined,
-                divisionName: getLabelById(divisions, watchDiv),
-                districtName: getLabelById(districts, watchDist),
-                upazilaName: getLabelById(upazilas, watchUpazila) || getLabelById(thanas, watchUpazila),
+                divisionName: selectedDivisionName,
+                districtName: selectedDistrictName,
+                upazilaName: selectedUpazilaName,
                 address: watch("address"),
                 amenities: Array.isArray(watchAmenities) ? watchAmenities : watchAmenities ? [watchAmenities] : []
             };
@@ -289,8 +293,11 @@ const AddProperty = () => {
                 areaSqFt: Number(data.areaSqFt),
                 address: {
                     division_id: data.division_id,
+                    division_name: selectedDivisionName,
                     district_id: data.district_id,
+                    district_name: selectedDistrictName,
                     upazila_id: data.upazila_id,
+                    upazila_name: selectedUpazilaName,
                     street: data.address
                 },
                 location: data.coordinates,

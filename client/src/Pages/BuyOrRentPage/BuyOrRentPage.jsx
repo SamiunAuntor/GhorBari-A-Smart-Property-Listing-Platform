@@ -92,6 +92,14 @@ const BuyOrRentPage = () => {
         return { divisionMap, districtMap, upzilaMap };
     }, []);
 
+    const formatAddressString = useCallback((addressObj = {}, geoMaps = {}) => {
+        const upazilaName = addressObj.upazila_name || geoMaps.upzilaMap?.get(addressObj.upazila_id) || "";
+        const districtName = addressObj.district_name || geoMaps.districtMap?.get(addressObj.district_id) || "";
+        const divisionName = addressObj.division_name || geoMaps.divisionMap?.get(addressObj.division_id) || "";
+
+        return [addressObj.street, upazilaName, districtName, divisionName].filter(Boolean).join(", ");
+    }, []);
+
     const fetchProperties = useCallback(async () => {
         try {
             if (!authUser) {
@@ -141,10 +149,11 @@ const BuyOrRentPage = () => {
                 }
 
                 const addressObj = prop.address || {};
-                const upazilaName = upzilaMap.get(addressObj.upazila_id) || "";
-                const districtName = districtMap.get(addressObj.district_id) || "";
-                const divisionName = divisionMap.get(addressObj.division_id) || "";
-                const addressString = [addressObj.street, upazilaName, districtName, divisionName].filter(Boolean).join(", ");
+                const addressString = formatAddressString(addressObj, {
+                    upzilaMap,
+                    districtMap,
+                    divisionMap
+                });
 
                 const ownerEmail = prop.owner?.email;
                 const ownerInfo = ownerInfoMap.get(ownerEmail) || {};
@@ -168,7 +177,7 @@ const BuyOrRentPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [authUser, axiosInstance, fetchGeoFiles]);
+    }, [authUser, axiosInstance, fetchGeoFiles, formatAddressString]);
 
     useEffect(() => {
         if (!authLoading) {
