@@ -47,6 +47,8 @@ A comprehensive full-stack web application for buying, renting, and managing pro
 
 ### Key Highlights
 
+- Paid listing workflow with SSLCOMMERZ checkout for additional owner listings
+
 - 🌐 **Geo-Location Based Search**: Find properties by Division, District, and Upazila
 - 💬 **Real-Time Chat**: Instant messaging powered by Socket.io
 - 🤖 **AI Integration**: Groq API for intelligent property descriptions
@@ -120,6 +122,9 @@ A comprehensive full-stack web application for buying, renting, and managing pro
 
 #### 📝 **Property Creation**
 
+- First owner listing is free; every additional listing costs 99 BDT
+- Unpaid paid-required listings stay saved as drafts with retry payment support
+
 - Intuitive property creation wizard
 - Support for flat and building properties
 - Bulk image upload with drag-and-drop
@@ -171,6 +176,8 @@ A comprehensive full-stack web application for buying, renting, and managing pro
 
 #### 📊 **Analytics & Dashboard**
 
+- Revenue analytics for free vs paid listings and payment trends
+
 - Real-time system statistics
 - User growth analytics
 - Revenue and performance metrics
@@ -213,6 +220,7 @@ A comprehensive full-stack web application for buying, renting, and managing pro
 | **Groq API**        | AI content generation |
 | **Firebase Auth**   | User authentication   |
 | **ImgBB**           | Image hosting         |
+| **SSLCOMMERZ**      | Listing payment processing |
 | **React Leaflet / Leaflet** | Interactive map rendering     |
 | **Nodemailer**      | Email notifications   |
 
@@ -321,6 +329,7 @@ SMTP_PASS=your_smtp_app_password
 EMAIL_FROM=GhorBari <no-reply@example.com>
 
 CLIENT_URL=http://localhost:5173
+BACKEND_PUBLIC_URL=http://localhost:5000
 
 EMAILJS_SERVICE_ID=your_emailjs_service_id
 EMAILJS_TEMPLATE_ID=your_emailjs_template_id
@@ -329,6 +338,14 @@ EMAILJS_PRIVATE_KEY=your_emailjs_private_key
 
 GEMINI_API_KEY=your_gemini_api_key
 GROQ_API_KEY=your_groq_api_key
+
+SSLCOMMERZ_STORE_ID=your_sslcommerz_store_id
+SSLCOMMERZ_STORE_PASSWORD=your_sslcommerz_store_password
+SSLCOMMERZ_IS_SANDBOX=true
+SSLCOMMERZ_API_BASE_URL=https://sandbox.sslcommerz.com
+SSLCOMMERZ_VALIDATION_API_URL=https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php
+LISTING_FREE_LIMIT=1
+LISTING_FEE_BDT=99
 
 ENABLE_EMAIL_JOB_CRON=true
 INTERNAL_CRON_SECRET=your-internal-secret
@@ -358,6 +375,8 @@ VITE_API_URL=https://your-backend-service.onrender.com
 ```
 
 Note: the current frontend Firebase config uses the lowercase `VITE_apiKey`-style keys shown above.
+
+No frontend payment credential is required. SSLCOMMERZ is initialized from the backend, and the frontend only needs `VITE_API_URL` pointing to the deployed API.
 
 ---
 
@@ -475,6 +494,43 @@ Content-Type: application/json
   "amenities": [...]
 }
 ```
+
+If the owner is within the free listing limit, the property is created normally. If the owner already used the free slot, the system stores the property as a draft and returns payment-session details for SSLCOMMERZ checkout.
+
+### Payment Endpoints
+
+**Retry Listing Payment**
+
+```http
+POST /api/payments/listings/:propertyId/retry
+Authorization: Bearer <firebase_token>
+```
+
+Creates a fresh SSLCOMMERZ session for an unpaid draft listing owned by the current user.
+
+**SSLCOMMERZ Success Callback**
+
+```http
+POST /api/payments/sslcommerz/success
+```
+
+Validates the transaction and publishes the related draft listing.
+
+**SSLCOMMERZ Failure Callback**
+
+```http
+POST /api/payments/sslcommerz/fail
+```
+
+Marks the payment attempt as failed and keeps the listing available for later repayment.
+
+**SSLCOMMERZ Cancel Callback**
+
+```http
+POST /api/payments/sslcommerz/cancel
+```
+
+Cancels the payment attempt and keeps the draft listing available for repayment.
 
 ### AI Endpoints
 
@@ -599,7 +655,15 @@ Frontend
 - Location (address + coordinates)
 - Owner information
 - Status and appraisal data
+- Payment status and pricing snapshot for paid-required listings
 - Timestamps
+
+### Listing Payments
+
+- Property and owner references
+- SSLCOMMERZ transaction identifiers
+- Amount, currency, and payment status
+- Gateway validation payload and timestamps
 
 ### Chat
 
@@ -687,6 +751,8 @@ firebase deploy
 # Set environment variables in the Render dashboard
 # Deploy the web service
 ```
+
+For sandbox testing, keep `SSLCOMMERZ_IS_SANDBOX=true` and use the sandbox API URLs. For live transactions later, update only the SSLCOMMERZ credentials and gateway URLs to their production values.
 
 ### Database (MongoDB Atlas)
 
