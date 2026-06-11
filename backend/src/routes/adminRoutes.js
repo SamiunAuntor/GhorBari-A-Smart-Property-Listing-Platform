@@ -39,6 +39,7 @@ router.delete("/admin/delete-property/:id", adminController.deleteProperty);
 
 router.get("/admin/stats", adminController.getStats);
 router.get("/admin/dashboard-insights", adminController.getDashboardInsights);
+router.get("/admin/revenue-insights", adminController.getRevenueInsights);
 
 // API for admin to get property by id regardless of status
 

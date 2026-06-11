@@ -7,6 +7,7 @@ import {
     LogOut,
     Users,
     Layers,
+    BadgeDollarSign,
     Menu,
     X
 } from 'lucide-react';
@@ -47,6 +48,7 @@ const DashboardLayout = () => {
 
     const navItems = [
         { icon: LayoutDashboard, label: 'Admin Dashboard', path: '/admin-dashboard', badge: null },
+        { icon: BadgeDollarSign, label: 'Revenue Analytics', path: '/admin-dashboard/revenue', badge: null },
         { icon: UserCheck, label: 'Pending User Verifications', path: '/admin-dashboard/pending-verifications', badge: pendingUsers.length },
         { icon: Users, label: 'All Users', path: '/admin-dashboard/all-users', badge: null },
         { icon: Layers, label: 'All Property Listings', path: '/admin-dashboard/all-properties', badge: null },
