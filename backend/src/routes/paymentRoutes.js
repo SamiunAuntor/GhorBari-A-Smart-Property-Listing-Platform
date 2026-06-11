@@ -5,6 +5,7 @@ import * as paymentController from "../controllers/paymentController.js";
 const router = express.Router();
 
 router.get("/api/payments/listing-drafts/:draftId/status", verifyToken, paymentController.getListingDraftStatus);
+router.get("/api/payments/listing-drafts", verifyToken, paymentController.getOwnerListingDrafts);
 router.post("/api/payments/listing-drafts/:draftId/retry", verifyToken, paymentController.retryListingPayment);
 
 router.all("/api/payments/sslcommerz/success", paymentController.handleSslCommerzSuccess);

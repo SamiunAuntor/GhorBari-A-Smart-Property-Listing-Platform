@@ -427,10 +427,13 @@ const AddProperty = () => {
             <div className="w-11/12 mx-auto">
                 {/* Header Section */}
                 <div className="mb-12">
-                    <div className="text-center md:text-left">
-                        <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-4">
-                            Add New <span className="bg-gradient-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent">Property</span>
-                        </h1>
+                    <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+                        <div className="text-center md:text-left">
+                            <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-4">
+                                Add New <span className="bg-gradient-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent">Property</span>
+                            </h1>
+                        </div>
+                        <div className="flex flex-col items-stretch gap-4 md:max-w-sm md:items-end">
                         {entitlement?.success && (
                             <div className="inline-flex flex-col gap-2 rounded-md border border-orange-100 bg-white/80 px-4 py-3 text-left shadow-sm">
                                 <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-600">
@@ -447,7 +450,7 @@ const AddProperty = () => {
                             </div>
                         )}
                         {pendingDraftId && (
-                            <div className="mt-4 flex flex-col gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-4 text-left">
+                            <div className="flex flex-col gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-4 text-left">
                                 <p className="text-sm font-semibold text-amber-900">
                                     You have a saved paid-listing draft waiting for payment.
                                 </p>
@@ -473,6 +476,7 @@ const AddProperty = () => {
                                 </div>
                             </div>
                         )}
+                        </div>
                     </div>
                 </div>
 
@@ -743,7 +747,7 @@ const AddProperty = () => {
                                     Listing...
                                 </>
                             ) : (
-                                "List Your Property"
+                                entitlement?.freeRemaining > 0 ? "List Property" : "Pay & List Property"
                             )}
                         </button>
                     </div>
