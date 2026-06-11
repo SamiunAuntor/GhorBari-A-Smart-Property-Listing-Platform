@@ -15,6 +15,9 @@ const router = express.Router();
 // Create property
 router.post("/post-property", verifyToken, propertyController.postProperty);
 
+// Get current owner's free/paid listing entitlement
+router.get("/listing-entitlement", verifyToken, propertyController.getListingEntitlementInfo);
+
 // Get all property data of a user
 router.get("/my-properties", verifyToken, verifyOwner, propertyController.getMyProperties);
 

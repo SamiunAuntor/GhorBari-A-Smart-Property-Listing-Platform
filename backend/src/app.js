@@ -13,6 +13,7 @@ import aiRoutes from "./routes/aiRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
 import ratingRoutes from "./routes/ratingRoutes.js";
 import internalRoutes from "./routes/internalRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 
 
 // Load environment variables
@@ -28,6 +29,7 @@ app.use(cors());
 
 // JSON body parser
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 
 // ========== HEALTH CHECK ==========
@@ -73,6 +75,9 @@ app.use("/", ratingRoutes);
 
 // Internal routes
 app.use("/", internalRoutes);
+
+// Payment routes
+app.use("/", paymentRoutes);
 
 
 export default app;
