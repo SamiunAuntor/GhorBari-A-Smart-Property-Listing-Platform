@@ -1,6 +1,7 @@
 import { useForm } from "react-hook-form";
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate, useSearchParams } from "react-router";
 import useAxios from "../../Hooks/useAxios";
 import MapPicker from "../../Components/MapPicker";
 import useAuth from "../../Hooks/useAuth";
@@ -45,20 +46,37 @@ const getLabelById = (items, id) => items.find(item => String(item.id) === Strin
 
 const AddProperty = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm();
     const [mapView, setMapView] = useState({ center: [23.6850, 90.3563], zoom: 7 });
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
     const [isEstimatingPrice, setIsEstimatingPrice] = useState(false);
+    const [isRetryingPayment, setIsRetryingPayment] = useState(false);
     const [priceEstimate, setPriceEstimate] = useState(null);
+    const [pendingDraftId, setPendingDraftId] = useState(searchParams.get("draftId") || "");
     const lastUpdateRef = useRef({ division: null, district: null, upazila: null });
     const axios = useAxios();
+
+    const paymentStatus = searchParams.get("payment");
 
     const { data: divisions = [] } = useQuery({ queryKey: ["divs"], queryFn: () => fetch("/divisions.json").then(res => res.json()) });
     const { data: districts = [] } = useQuery({ queryKey: ["dists"], queryFn: () => fetch("/districts.json").then(res => res.json()) });
     const { data: upazilas = [] } = useQuery({ queryKey: ["upzs"], queryFn: () => fetch("/upzillas.json").then(res => res.json()) });
     const { data: thanas = [] } = useQuery({ queryKey: ["thanas"], queryFn: () => fetch("/thanas.json").then(res => res.json()) });
+    const { data: entitlement } = useQuery({
+        queryKey: ["listing-entitlement", user?.email],
+        enabled: !!user,
+        queryFn: async () => {
+            const token = await user?.getIdToken();
+            const { data } = await axios.get("/listing-entitlement", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return data;
+        }
+    });
 
     const listingType = watch("listingType");
     const propertyType = watch("propertyType");
@@ -121,6 +139,36 @@ const AddProperty = () => {
         setPriceEstimate(null);
     }, [listingType, propertyType, watchDiv, watchDist, watchUpazila, watchAreaSqFt, watchRoomCount, watchBathrooms, watchFloorCount, watchTotalUnits, watchAmenities]);
 
+    useEffect(() => {
+        if (!paymentStatus) {
+            return;
+        }
+
+        const draftId = searchParams.get("draftId") || "";
+        setPendingDraftId(draftId);
+
+        if (paymentStatus === "success") {
+            setPendingDraftId("");
+            showToast("Payment successful. Your listing has been published.", "success");
+            reset();
+            setSelectedFiles([]);
+            setPriceEstimate(null);
+            setMapView({ center: [23.6850, 90.3563], zoom: 7 });
+            lastUpdateRef.current = { division: null, district: null, upazila: null };
+        } else if (paymentStatus === "failed") {
+            showToast("Payment failed. You can retry the payment for your saved listing draft.", "error");
+        } else if (paymentStatus === "cancelled") {
+            showToast("Payment cancelled. Your listing draft is saved and can be retried.", "error");
+        }
+
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.delete("payment");
+        if (paymentStatus === "success") {
+            nextParams.delete("draftId");
+        }
+        setSearchParams(nextParams, { replace: true });
+    }, [paymentStatus, reset, searchParams, setSearchParams]);
+
     const handleFilesChange = (e) => {
         const files = Array.from(e.target.files);
         if (selectedFiles.length + files.length > 10) {
@@ -131,6 +179,30 @@ const AddProperty = () => {
 
     const removeFile = (index) => {
         setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const handleRetryPayment = async () => {
+        if (!pendingDraftId) {
+            return;
+        }
+
+        setIsRetryingPayment(true);
+        try {
+            const token = await user?.getIdToken();
+            const { data } = await axios.post(`/api/payments/listing-drafts/${pendingDraftId}/retry`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (!data?.success || !data?.redirectUrl) {
+                throw new Error(data?.message || "Failed to retry payment");
+            }
+
+            window.location.href = data.redirectUrl;
+        } catch (error) {
+            showToast(error?.response?.data?.message || "Could not retry payment right now", "error");
+        } finally {
+            setIsRetryingPayment(false);
+        }
     };
 
     const canGenerateDescription = () => {
@@ -313,9 +385,16 @@ const AddProperty = () => {
                 payload.bathrooms = Number(data.bathrooms);
             }
 
-            await axios.post("/post-property", payload, {
+            const response = await axios.post("/post-property", payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
+
+            if (response.data?.mode === "payment_required" && response.data?.redirectUrl) {
+                setPendingDraftId(response.data?.draftId || "");
+                showToast("Redirecting to SSLCOMMERZ payment...", "success");
+                window.location.href = response.data.redirectUrl;
+                return;
+            }
 
             showToast("Property listed successfully!", "success");
             reset();
@@ -323,9 +402,10 @@ const AddProperty = () => {
             setPriceEstimate(null);
             setMapView({ center: [23.6850, 90.3563], zoom: 7 });
             lastUpdateRef.current = { division: null, district: null, upazila: null };
+            navigate("/list-property");
 
-        } catch {
-            showToast("Failed to list property. Check connection.", "error");
+        } catch (error) {
+            showToast(error?.response?.data?.message || "Failed to list property. Check connection.", "error");
         } finally {
             setIsSubmitting(false);
         }
@@ -348,10 +428,51 @@ const AddProperty = () => {
                 {/* Header Section */}
                 <div className="mb-12">
                     <div className="text-center md:text-left">
-                        
                         <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-4">
                             Add New <span className="bg-gradient-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent">Property</span>
                         </h1>
+                        {entitlement?.success && (
+                            <div className="inline-flex flex-col gap-2 rounded-md border border-orange-100 bg-white/80 px-4 py-3 text-left shadow-sm">
+                                <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-600">
+                                    Listing Quota
+                                </p>
+                                <p className="text-sm font-semibold text-gray-700">
+                                    {entitlement.freeRemaining > 0
+                                        ? `${entitlement.freeRemaining} free slot${entitlement.freeRemaining > 1 ? "s" : ""} left out of ${entitlement.freeLimit}.`
+                                        : `Free limit reached. New listings require payment.`}
+                                </p>
+                                <p className="text-xs font-medium text-gray-500">
+                                    Listing fee after {entitlement.freeLimit} listings: Tk {entitlement.listingFeeBdt}
+                                </p>
+                            </div>
+                        )}
+                        {pendingDraftId && (
+                            <div className="mt-4 flex flex-col gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-4 text-left">
+                                <p className="text-sm font-semibold text-amber-900">
+                                    You have a saved paid-listing draft waiting for payment.
+                                </p>
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={handleRetryPayment}
+                                        disabled={isRetryingPayment}
+                                        className="rounded-md bg-amber-500 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-white hover:bg-amber-600 disabled:opacity-60"
+                                    >
+                                        {isRetryingPayment ? "Retrying..." : "Retry Payment"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setPendingDraftId("");
+                                            setSearchParams({}, { replace: true });
+                                        }}
+                                        className="rounded-md border border-amber-300 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-amber-900"
+                                    >
+                                        Dismiss
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 

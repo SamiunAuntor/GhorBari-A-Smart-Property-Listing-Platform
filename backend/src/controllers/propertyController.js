@@ -2,84 +2,71 @@ import { getDatabase } from "../config/db.js";
 
 import { ObjectId } from "mongodb";
 import { generatePropertyAppraisal } from "../services/propertyAppraisalService.js";
-import { buildPropertyAddress, buildPropertySearchText } from "../services/propertyLocationService.js";
+import { buildPropertySearchText } from "../services/propertyLocationService.js";
+import { createPropertyRecord } from "../services/propertyPersistenceService.js";
+import { getListingEntitlement } from "../services/listingBillingService.js";
+import { initiatePaidListingPayment } from "./paymentController.js";
 
 export const postProperty = async (req, res) => {
 
     try {
 
         const db = getDatabase();
-
         const data = req.body;
+        const entitlement = await getListingEntitlement(db, req.user.email);
 
-        const propertyType = data.propertyType; // flat | building
-
-        // Base property object
-        const property = {
-
-            title: data.title,
-            listingType: data.listingType,        // rent | sale
-            propertyType: propertyType,           // flat | building
-            price: Number(data.price),             // sale price or rent per month
-            areaSqFt: Number(data.areaSqFt),
-
-            address: buildPropertyAddress(data.address),
-
-            // Array of image URLs from ImgBB
-            images: data.images || [],
-
-            overview: data.overview,
-            amenities: data.amenities || [],
-
-            location: {
-                lat: Number(data.location.lat),
-                lng: Number(data.location.lng)
-            },
-
-            owner: {
-                uid: req.user.uid,
-                name: req.user.name,
-                email: req.user.email,
-                photoURL: req.user.photoURL
-            },
-
-            isOwnerVerified: req.user.isVerified,
-            status: "active", // pending → active (approved) → hidden (owner hides) → deal-in-progress → sold/rented
-            active_proposal_id: null, // No active proposal initially
-            createdAt: new Date()
-        };
-
-        // Dynamic fields based on property type
-        if (propertyType === "building") {
-            // For building: floorCount and totalUnits
-            property.floorCount = Number(data.floorCount);
-            property.totalUnits = Number(data.totalUnits);
-        } else if (propertyType === "flat") {
-            // For flat: roomCount and bathrooms
-            property.roomCount = Number(data.roomCount);
-            property.bathrooms = Number(data.bathrooms);
+        if (entitlement.requiresPayment) {
+            const paymentSession = await initiatePaidListingPayment(db, req.user, data);
+            return res.status(200).send({
+                success: true,
+                mode: "payment_required",
+                ...paymentSession,
+                entitlement
+            });
         }
 
-        try {
-            property.aiAppraisal = await generatePropertyAppraisal(property);
-        } catch (appraisalError) {
-            console.error("Property appraisal generation failed during property creation:", appraisalError.message);
-            property.aiAppraisal = null;
-        }
+        const createdProperty = await createPropertyRecord(db, data, req.user, {
+            billing: {
+                type: "free",
+                amount: 0,
+                currency: "BDT",
+                paymentId: null
+            }
+        });
 
-        property.searchText = buildPropertySearchText(property);
-
-        // Insert directly into the "properties" collection
-
-        const result = await db.collection("properties").insertOne(property);
-
-        res.status(201).send({ success: true, id: result.insertedId });
+        return res.status(201).send({
+            success: true,
+            mode: "free_listing",
+            id: createdProperty._id,
+            entitlement: {
+                ...entitlement,
+                currentCount: entitlement.currentCount + 1,
+                freeRemaining: Math.max(0, entitlement.freeRemaining - 1),
+                requiresPayment: entitlement.currentCount + 1 >= entitlement.freeLimit
+            }
+        });
 
     } catch (error) {
 
         console.error(error);
 
-        res.status(500).send({ message: "Server error" });
+        res.status(error.statusCode || 500).send({ message: error.message || "Server error" });
+
+    }
+
+};
+
+export const getListingEntitlementInfo = async (req, res) => {
+
+    try {
+
+        const entitlement = await getListingEntitlement(req.db, req.user.email);
+
+        res.send({ success: true, ...entitlement });
+
+    } catch (error) {
+
+        res.status(500).send({ success: false, message: error.message });
 
     }
 
@@ -95,13 +82,11 @@ export const getMyProperties = async (req, res) => {
 
         const query = { "owner.email": email };
 
-        // Sorting by newest first
         const properties = await db.collection("properties")
             .find(query)
             .sort({ createdAt: -1 })
             .toArray();
 
-        // Get application counts for each property
         const propertiesWithCounts = await Promise.all(
             properties.map(async (property) => {
                 const applicationCount = await db.collection("applications").countDocuments({
@@ -163,12 +148,11 @@ export const getActiveProperties = async (req, res) => {
 
         const db = getDatabase();
 
-        // Only show active properties (not pending, rejected, hidden, sold, rented, removed)
         const result = await db.collection("properties")
-            .find({ 
-                status: "active"  // Only active properties are shown in marketplace
+            .find({
+                status: "active"
             })
-            .sort({ createdAt: -1 })          // newest first
+            .sort({ createdAt: -1 })
             .toArray();
 
         return res.json(result);
@@ -198,24 +182,19 @@ export const updateProperty = async (req, res) => {
         }
 
         const data = req.body;
-
-        // Get the existing property to check propertyType
         const existingProperty = await db.collection("properties").findOne({ _id: new ObjectId(id) });
         
         if (!existingProperty) {
             return res.status(404).send({ message: "Property not found" });
         }
 
-        // Prevent editing properties that are in deal-in-progress, sold, or rented
         if (["deal-in-progress", "sold", "rented"].includes(existingProperty.status)) {
-            return res.status(400).send({ 
-                message: `Cannot edit property that is ${existingProperty.status}. Please complete or cancel the deal first.` 
+            return res.status(400).send({
+                message: `Cannot edit property that is ${existingProperty.status}. Please complete or cancel the deal first.`
             });
         }
 
-        const propertyType = existingProperty.propertyType; // flat | building
-
-        // Only allow updating specific fields
+        const propertyType = existingProperty.propertyType;
         const updateData = {
 
             price: Number(data.price),
@@ -231,13 +210,10 @@ export const updateProperty = async (req, res) => {
 
         };
 
-        // Dynamic fields based on property type
         if (propertyType === "building") {
-            // For building: floorCount and totalUnits
             updateData.floorCount = Number(data.floorCount);
             updateData.totalUnits = Number(data.totalUnits);
         } else if (propertyType === "flat") {
-            // For flat: roomCount and bathrooms
             updateData.roomCount = Number(data.roomCount);
             updateData.bathrooms = Number(data.bathrooms);
         }
@@ -298,7 +274,6 @@ export const deleteProperty = async (req, res) => {
 
         }
 
-        // Get the property first to check status
         const property = await db.collection("properties").findOne({
             _id: new ObjectId(id)
         });
@@ -307,27 +282,24 @@ export const deleteProperty = async (req, res) => {
             return res.status(404).send({ message: "Property not found" });
         }
 
-        // Verify ownership
         if (property.owner.email !== req.user.email) {
             return res.status(403).send({ message: "You don't have permission to delete this property" });
         }
 
-        // CRITICAL: Cannot delete properties with active deals
         if (["deal-in-progress", "sold", "rented"].includes(property.status)) {
-            return res.status(400).send({ 
-                message: `Cannot delete property that is ${property.status}. Please complete or cancel the deal first.` 
+            return res.status(400).send({
+                message: `Cannot delete property that is ${property.status}. Please complete or cancel the deal first.`
             });
         }
 
-        // Check if property has any active applications
         const activeApplications = await db.collection("applications").countDocuments({
             propertyId: new ObjectId(id),
             status: { $in: ["pending", "counter", "deal-in-progress"] }
         });
 
         if (activeApplications > 0) {
-            return res.status(400).send({ 
-                message: "Cannot delete property with active applications. Please wait for applications to be resolved or reject them first." 
+            return res.status(400).send({
+                message: "Cannot delete property with active applications. Please wait for applications to be resolved or reject them first."
             });
         }
 
@@ -353,13 +325,11 @@ export const deleteProperty = async (req, res) => {
 
 };
 
-// Toggle property status (hide/unhide) - switches between "active" and "hidden"
 export const togglePropertyVisibility = async (req, res) => {
 
     try {
 
         const db = getDatabase();
-
         const id = req.params.id;
 
         if (!ObjectId.isValid(id)) {
@@ -368,7 +338,6 @@ export const togglePropertyVisibility = async (req, res) => {
 
         }
 
-        // Get the property
         const property = await db.collection("properties").findOne({ _id: new ObjectId(id) });
 
         if (!property) {
@@ -377,51 +346,44 @@ export const togglePropertyVisibility = async (req, res) => {
 
         }
 
-        // Verify ownership
         if (property.owner.email !== req.user.email) {
 
             return res.status(403).send({ message: "You don't have permission to update this property" });
 
         }
 
-        // Can toggle between active, hidden, and deal-in-progress
-        // Cannot toggle if property is sold, rented, rejected, pending, or removed
         if (!["active", "hidden", "deal-in-progress"].includes(property.status)) {
 
-            return res.status(400).send({ 
-                message: `Cannot toggle visibility for properties with status: ${property.status}. Can only toggle for active, hidden, or deal-in-progress properties.` 
+            return res.status(400).send({
+                message: `Cannot toggle visibility for properties with status: ${property.status}. Can only toggle for active, hidden, or deal-in-progress properties.`
             });
 
         }
 
-        // Toggle status: active ↔ hidden (for deal-in-progress, toggle to hidden)
         let newStatus;
-        let updateData = {
+        const updateData = {
             updatedAt: new Date()
         };
         
         if (property.status === "active") {
             newStatus = "hidden";
         } else if (property.status === "hidden") {
-            // When unhiding, restore to previousStatus if it exists (deal-in-progress), otherwise active
             newStatus = property.previousStatus || "active";
-            // Clear previousStatus if we're restoring
             if (property.previousStatus) {
                 updateData.previousStatus = null;
             }
         } else if (property.status === "deal-in-progress") {
-            // For deal-in-progress, hide it but store deal-in-progress as previousStatus
             newStatus = "hidden";
             updateData.previousStatus = "deal-in-progress";
         } else {
-            newStatus = "active"; // fallback
+            newStatus = "active";
         }
         
         updateData.status = newStatus;
 
         const result = await db.collection("properties").updateOne(
             { _id: new ObjectId(id) },
-            { 
+            {
                 $set: updateData
             }
         );
@@ -432,8 +394,8 @@ export const togglePropertyVisibility = async (req, res) => {
 
         }
 
-        res.send({ 
-            success: true, 
+        res.send({
+            success: true,
             message: `Property ${newStatus === "active" ? "shown" : "hidden"} successfully`,
             status: newStatus
         });
@@ -448,13 +410,11 @@ export const togglePropertyVisibility = async (req, res) => {
 
 };
 
-// Reopen listing for rented properties (change status from "rented" to "active")
 export const reopenListing = async (req, res) => {
 
     try {
 
         const db = getDatabase();
-
         const id = req.params.id;
 
         if (!ObjectId.isValid(id)) {
@@ -463,7 +423,6 @@ export const reopenListing = async (req, res) => {
 
         }
 
-        // Get the property
         const property = await db.collection("properties").findOne({ _id: new ObjectId(id) });
 
         if (!property) {
@@ -472,32 +431,29 @@ export const reopenListing = async (req, res) => {
 
         }
 
-        // Verify ownership
         if (property.owner.email !== req.user.email) {
 
             return res.status(403).send({ message: "You don't have permission to update this property" });
 
         }
 
-        // Only allow reopening rented properties, not sold properties
         if (property.status !== "rented") {
 
-            return res.status(400).send({ 
-                message: "Can only reopen rented properties. Sold properties cannot be reopened." 
+            return res.status(400).send({
+                message: "Can only reopen rented properties. Sold properties cannot be reopened."
             });
 
         }
 
-        // Change status from "rented" to "active" and clear visibility
         const result = await db.collection("properties").updateOne(
             { _id: new ObjectId(id) },
-            { 
-                $set: { 
+            {
+                $set: {
                     status: "active",
                     visibility: "visible",
-                    active_proposal_id: null, // Clear any active proposal
+                    active_proposal_id: null,
                     updatedAt: new Date()
-                } 
+                }
             }
         );
 
@@ -507,8 +463,8 @@ export const reopenListing = async (req, res) => {
 
         }
 
-        res.send({ 
-            success: true, 
+        res.send({
+            success: true,
             message: "Listing reopened successfully. Your property is now active and visible on the marketplace.",
             status: "active"
         });
@@ -523,21 +479,18 @@ export const reopenListing = async (req, res) => {
 
 };
 
-// Get featured properties for homepage (public endpoint - no authentication required)
 export const getFeaturedProperties = async (req, res) => {
 
     try {
 
         const db = getDatabase();
+        const limit = parseInt(req.query.limit) || 8;
 
-        const limit = parseInt(req.query.limit) || 8; // Default to 8, can be customized
-
-        // Get latest active properties (not pending, rejected, hidden, sold, rented, removed)
         const result = await db.collection("properties")
-            .find({ 
-                status: "active"  // Only active properties are shown
+            .find({
+                status: "active"
             })
-            .sort({ createdAt: -1 })          // newest first
+            .sort({ createdAt: -1 })
             .limit(limit)
             .toArray();
         

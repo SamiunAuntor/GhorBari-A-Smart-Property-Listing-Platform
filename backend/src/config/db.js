@@ -203,6 +203,16 @@ export async function connectDatabase() {
             console.error("Failed to migrate chat conversations", err);
         }
 
+        try {
+            await db.collection("property_drafts").createIndex({ "owner.email": 1, status: 1, createdAt: -1 });
+            await db.collection("payments").createIndex({ tranId: 1 }, { unique: true });
+            await db.collection("payments").createIndex({ draftId: 1, createdAt: -1 });
+            await db.collection("payments").createIndex({ "owner.email": 1, status: 1, createdAt: -1 });
+            console.log("Payment indexes ensured");
+        } catch (err) {
+            console.error("Failed to ensure payment indexes", err);
+        }
+
         return db;
 
     } catch (error) {
