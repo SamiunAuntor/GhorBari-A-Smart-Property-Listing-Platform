@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import MyPropertyCard from './MyPropertyCard';
+import PendingPaymentDraftCard from './PendingPaymentDraftCard';
 import MyRequestedProperties from './MyRequestedProperties';
 import useAuth from '../../Hooks/useAuth';
 import useAxios from '../../Hooks/useAxios';
@@ -49,6 +50,24 @@ const ListProperty = () => {
         },
     });
 
+    const { data: draftsResponse, isLoading: draftsLoading } = useQuery({
+        queryKey: ['listing-drafts', user?.email],
+        queryFn: async () => {
+            if (!user) return { drafts: [] };
+
+            const token = await user.getIdToken();
+            const res = await axios.get('/api/payments/listing-drafts', {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            return res.data;
+        },
+    });
+
+    const drafts = draftsResponse?.drafts || [];
+
 
     const ownerSuccessfulDeals = properties?.filter(
         (property) => property?.status === 'sold' || property?.status === 'rented'
@@ -87,6 +106,13 @@ const ListProperty = () => {
             iconClass: "text-amber-600",
             iconBg: "bg-amber-50"
         },
+        {
+            label: "Pending Listing Payments",
+            value: drafts.length || 0,
+            icon: FileText,
+            iconClass: "text-red-600",
+            iconBg: "bg-red-50"
+        },
     ];
 
     return (
@@ -108,7 +134,7 @@ const ListProperty = () => {
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-16">
                     {stats.map((stat, i) => (
                         <article
                             key={i}
@@ -140,7 +166,7 @@ const ListProperty = () => {
                         <>
                             <div className="flex items-center justify-between gap-4 mb-6">
                                 <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
-                                    My Listings ({properties.length || 0})
+                                    My Listings ({(properties.length || 0) + (drafts.length || 0)})
                                 </h2>
                                 <div className="bg-white rounded-lg p-2 border border-gray-200 shadow-sm">
                                     <div className="flex gap-2">
@@ -167,7 +193,7 @@ const ListProperty = () => {
                                     </div>
                                 </div>
                             </div>
-                            {propertiesLoading ? (
+                            {propertiesLoading || draftsLoading ? (
                                 <div className="flex flex-col items-center justify-center py-20">
                                     <Loader2 className="animate-spin text-orange-500 mb-4" size={40} />
                                     <p className="font-bold text-gray-400 uppercase tracking-widest text-xs">Loading Listings...</p>
@@ -175,10 +201,15 @@ const ListProperty = () => {
                             ) : (
                                 <div className="overflow-x-auto sm:overflow-visible pb-2">
                                     <div className="grid grid-cols-1 gap-6 min-w-[680px] sm:min-w-0">
-                                        {properties.length > 0 ? (
-                                            properties.map(property => (
+                                        {(drafts.length > 0 || properties.length > 0) ? (
+                                            <>
+                                                {drafts.map((draft) => (
+                                                    <PendingPaymentDraftCard key={`draft-${draft._id}`} draft={draft} />
+                                                ))}
+                                                {properties.map(property => (
                                                 <MyPropertyCard key={property._id} property={property} />
-                                            ))
+                                                ))}
+                                            </>
                                         ) : (
                                             <div className="col-span-full text-center py-20 border-2 border-dashed border-gray-100 rounded-lg">
                                                 <p className="text-gray-400 font-medium">No properties found. Start by adding one!</p>

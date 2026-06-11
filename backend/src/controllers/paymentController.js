@@ -282,6 +282,59 @@ export const getListingDraftStatus = async (req, res) => {
     }
 };
 
+export const getOwnerListingDrafts = async (req, res) => {
+    try {
+        const db = req.db;
+
+        const drafts = await db.collection("property_drafts")
+            .find({
+                "owner.email": req.user.email,
+                status: { $in: ["payment_pending", "payment_failed", "payment_cancelled"] }
+            })
+            .sort({ createdAt: -1 })
+            .toArray();
+
+        const draftIds = drafts.map((draft) => draft._id);
+        const payments = draftIds.length > 0
+            ? await db.collection("payments")
+                .find({ draftId: { $in: draftIds } })
+                .sort({ createdAt: -1 })
+                .toArray()
+            : [];
+
+        const paymentMap = new Map();
+        payments.forEach((payment) => {
+            const key = String(payment.draftId);
+            if (!paymentMap.has(key)) {
+                paymentMap.set(key, payment);
+            }
+        });
+
+        const response = drafts.map((draft) => {
+            const payment = paymentMap.get(String(draft._id));
+            return {
+                _id: draft._id,
+                title: draft.propertyPayload?.title || "Untitled draft",
+                listingType: draft.propertyPayload?.listingType || "rent",
+                propertyType: draft.propertyPayload?.propertyType || "flat",
+                address: draft.propertyPayload?.address || {},
+                images: draft.propertyPayload?.images || [],
+                price: draft.propertyPayload?.price || 0,
+                draftStatus: draft.status,
+                amount: draft.amount,
+                currency: draft.currency,
+                createdAt: draft.createdAt,
+                paymentStatus: payment?.status || null,
+                canRetryPayment: ["payment_pending", "payment_failed", "payment_cancelled"].includes(draft.status)
+            };
+        });
+
+        return res.send({ success: true, drafts: response });
+    } catch (error) {
+        return res.status(500).send({ success: false, message: error.message });
+    }
+};
+
 export const handleSslCommerzSuccess = async (req, res) => {
     const db = getDatabase();
 
