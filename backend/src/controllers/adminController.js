@@ -9,6 +9,14 @@ const INSIGHT_PERIODS = {
     monthly: 12
 };
 
+const PAYMENT_STATUS_LABELS = {
+    validated: "Validated",
+    paid: "Paid",
+    pending: "Pending",
+    failed: "Failed",
+    cancelled: "Cancelled"
+};
+
 function getPeriodStart(date, period) {
     const bucketDate = new Date(date);
     bucketDate.setHours(0, 0, 0, 0);
@@ -79,6 +87,11 @@ function buildTimeBuckets(period) {
 
 function getBucketKey(date, period) {
     return getPeriodStart(date, period).toISOString();
+}
+
+function formatCurrencyAmount(value) {
+    const numericValue = Number(value || 0);
+    return Number.isFinite(numericValue) ? numericValue : 0;
 }
 
 export const getPendingVerifications = async (req, res) => {
@@ -439,6 +452,152 @@ export const getDashboardInsights = async (req, res) => {
     } catch (error) {
 
         console.error("GET /admin/dashboard-insights error:", error);
+
+        res.status(500).send({ message: "Server error" });
+
+    }
+
+};
+
+export const getRevenueInsights = async (req, res) => {
+
+    try {
+
+        const db = getDatabase();
+        const period = ["daily", "weekly", "monthly"].includes(req.query.period) ? req.query.period : "daily";
+        const timeBuckets = buildTimeBuckets(period);
+        const timeBucketMap = new Map(timeBuckets.map((bucket) => [bucket.key, bucket]));
+        const firstBucketDate = new Date(timeBuckets[0].key);
+
+        const [
+            validatedPayments,
+            allPayments,
+            paidProperties,
+            freeProperties
+        ] = await Promise.all([
+            db.collection("payments").find(
+                { status: { $in: ["validated", "paid"] } },
+                {
+                    projection: {
+                        amount: 1,
+                        currency: 1,
+                        createdAt: 1,
+                        updatedAt: 1,
+                        paidAt: 1,
+                        validatedAt: 1,
+                        owner: 1,
+                        status: 1,
+                        tranId: 1
+                    }
+                }
+            ).toArray(),
+            db.collection("payments").find(
+                {},
+                {
+                    projection: {
+                        amount: 1,
+                        currency: 1,
+                        createdAt: 1,
+                        updatedAt: 1,
+                        paidAt: 1,
+                        validatedAt: 1,
+                        owner: 1,
+                        status: 1,
+                        tranId: 1
+                    }
+                }
+            ).toArray(),
+            db.collection("properties").countDocuments({ "billing.type": "paid" }),
+            db.collection("properties").countDocuments({ "billing.type": "free" })
+        ]);
+
+        let totalRevenue = 0;
+        validatedPayments.forEach((payment) => {
+            totalRevenue += formatCurrencyAmount(payment.amount);
+            const sourceDate = payment.validatedAt || payment.paidAt || payment.updatedAt || payment.createdAt;
+            if (!sourceDate) {
+                return;
+            }
+
+            const eventDate = new Date(sourceDate);
+            if (Number.isNaN(eventDate.getTime()) || eventDate < firstBucketDate) {
+                return;
+            }
+
+            const bucket = timeBucketMap.get(getBucketKey(eventDate, period));
+            if (!bucket) {
+                return;
+            }
+
+            bucket.revenue = (bucket.revenue || 0) + formatCurrencyAmount(payment.amount);
+            bucket.paidListings = (bucket.paidListings || 0) + 1;
+        });
+
+        const paymentStatusCounts = new Map();
+        allPayments.forEach((payment) => {
+            const normalizedStatus = String(payment.status || "pending").toLowerCase();
+            paymentStatusCounts.set(normalizedStatus, (paymentStatusCounts.get(normalizedStatus) || 0) + 1);
+        });
+
+        const totalListings = paidProperties + freeProperties;
+        const successfulPaymentsCount = validatedPayments.length;
+        const totalPaymentsCount = allPayments.length;
+        const successRate = totalPaymentsCount > 0
+            ? Number(((successfulPaymentsCount / totalPaymentsCount) * 100).toFixed(1))
+            : 0;
+        const averageRevenuePerPaidListing = paidProperties > 0
+            ? Number((totalRevenue / paidProperties).toFixed(2))
+            : 0;
+
+        const recentTransactions = [...allPayments]
+            .sort((a, b) => {
+                const dateA = new Date(a.validatedAt || a.paidAt || a.updatedAt || a.createdAt || 0).getTime();
+                const dateB = new Date(b.validatedAt || b.paidAt || b.updatedAt || b.createdAt || 0).getTime();
+                return dateB - dateA;
+            })
+            .slice(0, 10)
+            .map((payment) => ({
+                id: payment._id?.toString?.() || String(payment._id),
+                ownerEmail: payment.owner?.email || "",
+                amount: formatCurrencyAmount(payment.amount),
+                currency: payment.currency || "BDT",
+                status: payment.status || "pending",
+                tranId: payment.tranId || "",
+                createdAt: payment.createdAt || null,
+                paidAt: payment.validatedAt || payment.paidAt || payment.updatedAt || payment.createdAt || null
+            }));
+
+        res.send({
+            period,
+            summary: {
+                totalRevenue: Number(totalRevenue.toFixed(2)),
+                paidListings: paidProperties,
+                freeListings: freeProperties,
+                totalListings,
+                successfulPayments: successfulPaymentsCount,
+                totalPayments: totalPaymentsCount,
+                successRate,
+                averageRevenuePerPaidListing
+            },
+            revenueTrend: timeBuckets.map((bucket) => ({
+                label: bucket.label,
+                revenue: Number((bucket.revenue || 0).toFixed(2)),
+                paidListings: bucket.paidListings || 0
+            })),
+            listingMix: [
+                { name: "Free Listings", value: freeProperties },
+                { name: "Paid Listings", value: paidProperties }
+            ],
+            paymentStatusBreakdown: Array.from(paymentStatusCounts.entries()).map(([status, value]) => ({
+                name: PAYMENT_STATUS_LABELS[status] || status,
+                value
+            })),
+            recentTransactions
+        });
+
+    } catch (error) {
+
+        console.error("GET /admin/revenue-insights error:", error);
 
         res.status(500).send({ message: "Server error" });
 

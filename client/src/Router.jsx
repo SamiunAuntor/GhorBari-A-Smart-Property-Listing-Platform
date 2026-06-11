@@ -18,6 +18,7 @@ import AdminRoute from "./PrivateRoute/AdminRoute";
 import PendingUserVerifications from "./Pages/AdminDashboard/PendingUserVerifications";
 import AllUsers from "./Pages/AdminDashboard/AllUsers";
 import AllPropertyListings from "./Pages/AdminDashboard/AllPropertyListings";
+import RevenueAnalytics from "./Pages/AdminDashboard/RevenueAnalytics";
 import ChatPage from "./Pages/ChatPage/ChatPage";
 import ComparisonPage from "./Pages/ComparisonPage/ComparisonPage";
 import WishlistPage from "./Pages/WishlistPage/WishlistPage";
@@ -105,6 +106,10 @@ const router = createBrowserRouter([
             {
                 index: true,
                 element: <AdminDashboardHome></AdminDashboardHome>
+            },
+            {
+                path: "revenue",
+                element: <AdminRoute><RevenueAnalytics /></AdminRoute>
             },
             {
                 path: "pending-verifications",
